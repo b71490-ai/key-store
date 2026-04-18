@@ -348,22 +348,18 @@ export async function POST(request) {
 
 	keysStore.unshift(newProduct);
 
+	let persisted = true;
 	try {
 		await saveKeysStore(keysStore);
 	} catch {
-		return NextResponse.json(
-			{
-				success: false,
-				message: "تم إنشاء المنتج في الذاكرة فقط وتعذر حفظه بشكل دائم. استخدم قاعدة بيانات للإنتاج.",
-			},
-			{ status: 500 }
-		);
+		persisted = false;
 	}
 
 	return NextResponse.json(
 		{
 			success: true,
 			message: "تم استلام المنتج الجديد بنجاح.",
+			persisted,
 			data: newProduct,
 		},
 		{ status: 201 }
@@ -430,21 +426,17 @@ export async function PUT(request) {
 
 	keysStore[productIndex] = updatedProduct;
 
+	let persisted = true;
 	try {
 		await saveKeysStore(keysStore);
 	} catch {
-		return NextResponse.json(
-			{
-				success: false,
-				message: "تم تعديل المنتج في الذاكرة فقط وتعذر حفظ التعديل بشكل دائم. استخدم قاعدة بيانات للإنتاج.",
-			},
-			{ status: 500 }
-		);
+		persisted = false;
 	}
 
 	return NextResponse.json({
 		success: true,
 		message: "تم تحديث المنتج بنجاح.",
+		persisted,
 		data: updatedProduct,
 	});
 }
@@ -473,21 +465,17 @@ export async function DELETE(request) {
 
 	const [deletedProduct] = keysStore.splice(productIndex, 1);
 
+	let persisted = true;
 	try {
 		await saveKeysStore(keysStore);
 	} catch {
-		return NextResponse.json(
-			{
-				success: false,
-				message: "تم حذف المنتج في الذاكرة فقط وتعذر حفظ الحذف بشكل دائم. استخدم قاعدة بيانات للإنتاج.",
-			},
-			{ status: 500 }
-		);
+		persisted = false;
 	}
 
 	return NextResponse.json({
 		success: true,
 		message: "تم حذف المنتج بنجاح.",
+		persisted,
 		data: deletedProduct,
 	});
 }
