@@ -1,0 +1,200 @@
+[
+  {
+    "id": 1,
+    "productName": "Windows 11 Pro Key",
+    "platform": "Windows",
+    "price": 123,
+    "stock": 42,
+    "delivery": "تسليم فوري",
+    "guarantee": "ضمان استبدال لمدة 30 يوم",
+    "description": "مفتاح رقمي أصلي لتفعيل ويندوز 11 برو على جهاز واحد.",
+    "image": "/uploads/products/1776453299953-cfa36b44-803b-4005-9b52-8e6eb6153263.avif"
+  },
+  {
+    "id": 2,
+    "productName": "Office 2021 Professional",
+    "platform": "Microsoft",
+    "price": 34,
+    "stock": 18,
+    "delivery": "خلال 5 دقائق",
+    "guarantee": "دعم فني بعد الشراء",
+    "description": "حزمة أوفيس كاملة للمستخدمين الذين يحتاجون Word و Excel و PowerPoint.",
+    "image": "/uploads/products/1776453511014-23b8bcc7-d621-456c-94fb-864288b5c4c6.jpg"
+  },
+  {
+    "id": 3,
+    "productName": "Adobe Creative Cloud 1 Year",
+    "platform": "Adobe",
+    "price": 89,
+    "stock": 9,
+    "delivery": "تفعيل بالبريد الإلكتروني",
+    "guarantee": "حساب موثوق لمدة سنة",
+    "description": "اشتراك سنوي مخصص للمصممين وصناع المحتوى مع وصول كامل لتطبيقات Adobe.",
+    "image": "/uploads/products/1776453632023-f8fe9758-7a76-4263-8c3c-8a8d317d6278.jpg"
+  },
+  {
+    "id": 4,
+    "productName": "Windows 10 Pro Key",
+    "platform": "Windows",
+    "price": 19,
+    "stock": 64,
+    "delivery": "تسليم فوري",
+    "guarantee": "ضمان 30 يوم",
+    "description": "مفتاح رقمي لتفعيل ويندوز 10 برو للأجهزة المكتبية والمحمولة.",
+    "image": "/uploads/products/1776453771646-eb8dc436-5e39-4565-a8bf-a145c7730525.jpg"
+  },
+  {
+    "id": 5,
+    "productName": "Windows 11 Home Key",
+    "platform": "Windows",
+    "price": 13.99,
+    "stock": 120,
+    "delivery": "خلال دقيقتين",
+    "guarantee": "ضمان تفعيل",
+    "description": "نسخة منزلية مثالية للاستخدام اليومي مع تحديثات رسمية.",
+    "image": "/uploads/products/1776453951187-179d2ece-32d9-4004-8c3d-8f9ceb085b37.jpg"
+  },
+  {
+    "id": 6,
+    "productName": "Office 365 Family 1 Year",
+    "platform": "Microsoft",
+    "price": 44,
+    "stock": 37,
+    "delivery": "بريد إلكتروني",
+    "guarantee": "ضمان سنة كاملة",
+    "description": "اشتراك عائلي يدعم عدة مستخدمين مع OneDrive وتطبيقات Office.",
+    "image": "/uploads/products/1776454118715-f6d54cd0-a345-47b2-8459-57fe1558e254.jpg"
+  },
+  {
+    "id": 7,
+    "productName": "Office 2021 Home & Student",
+    "platform": "Microsoft",
+    "price": 27,
+    "stock": 58,
+    "delivery": "تسليم فوري",
+    "guarantee": "دعم فني 90 يوم",
+    "description": "Word و Excel و PowerPoint بترخيص دائم للاستخدام الدراسي.",
+    "image": "/uploads/products/1776454390486-88d6d493-d163-4806-a55c-1ef8ac5ce15e.jpg"
+  },
+  {
+    "id": 8,
+    "productName": "Microsoft Visio Professional",
+    "platform": "Microsoft",
+    "price": 32,
+    "stock": 22,
+    "delivery": "خلال 5 دقائق",
+    "guarantee": "ضمان استبدال",
+    "description": "أداة احترافية لإنشاء المخططات الهندسية والتنظيمية.",
+    "image": "/uploads/products/1776454541323-e7754877-59e5-428d-8ac0-4dfdb0ad8023.webp"
+  },
+  {
+    "id": 9,
+    "productName": "Adobe Photoshop 1 Year",
+    "platform": "Adobe",
+    "price": 36,
+    "stock": 19,
+    "delivery": "بريد إلكتروني",
+    "guarantee": "حساب موثوق",
+    "description": "اشتراك فوتوشوب سنوي للمصممين وصناع المحتوى.",
+    "image": "/uploads/products/1776454711247-9634ac00-f6de-4181-8789-dd000da3d2c6.webp"
+  },
+  {
+    "id": 10,
+    "productName": "Adobe Premiere Pro 1 Year",
+    "platform": "Adobe",
+    "price": 42,
+    "stock": 13,
+    "delivery": "تفعيل بالحساب",
+    "guarantee": "ضمان 12 شهر",
+    "description": "تحرير فيديو احترافي مع تحديثات مستمرة طوال السنة.",
+    "image": "/uploads/products/1776454810122-241bfdb0-0192-4586-8852-8344fafad0bc.webp"
+  },
+  {
+    "id": 11,
+    "productName": "Adobe Illustrator 1 Year",
+    "platform": "Adobe",
+    "price": 34,
+    "stock": 16,
+    "delivery": "خلال 10 دقائق",
+    "guarantee": "دعم مباشر",
+    "description": "برنامج تصميم المتجهات للشعارات والهوية البصرية.",
+    "image": "/uploads/products/1776454950695-4be8ac27-5196-485a-8bcc-3ab427802135.jpg"
+  },
+  {
+    "id": 12,
+    "productName": "Steam Wallet 50 USD",
+    "platform": "Steam",
+    "price": 46,
+    "stock": 71,
+    "delivery": "تسليم فوري",
+    "guarantee": "كود صالح 100%",
+    "description": "رصيد ستيم لشحن الحساب وشراء الألعاب مباشرة.",
+    "image": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg"
+  },
+  {
+    "id": 13,
+    "productName": "Steam Wallet 20 USD",
+    "platform": "Steam",
+    "price": 18.5,
+    "stock": 96,
+    "delivery": "خلال دقيقة",
+    "guarantee": "استبدال عند المشكلة",
+    "description": "بطاقة شحن ستيم بقيمة 20 دولار لألعابك المفضلة.",
+    "image": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg"
+  },
+  {
+    "id": 14,
+    "productName": "Xbox Game Pass Ultimate 3 Months",
+    "platform": "Microsoft",
+    "price": 22,
+    "stock": 28,
+    "delivery": "تسليم فوري",
+    "guarantee": "ضمان تفعيل",
+    "description": "اشتراك 3 أشهر للوصول إلى مكتبة ألعاب ضخمة على Xbox وPC.",
+    "image": "/uploads/products/1776455375739-f8bdb87e-6d10-4c60-a065-d58d19c6793e.jpg"
+  },
+  {
+    "id": 15,
+    "productName": "Windows Server 2022 Standard",
+    "platform": "Windows",
+    "price": 79,
+    "stock": 11,
+    "delivery": "خلال 15 دقيقة",
+    "guarantee": "دعم إعداد أولي",
+    "description": "مفتاح سيرفر رسمي مناسب لبيئات العمل والبنية التحتية.",
+    "image": "/uploads/products/1776455494276-62406757-b171-419b-9c8b-ee6b70c194c3.png"
+  },
+  {
+    "id": 16,
+    "productName": "Project Professional 2021",
+    "platform": "Microsoft",
+    "price": 31,
+    "stock": 20,
+    "delivery": "بريد إلكتروني",
+    "guarantee": "ضمان 30 يوم",
+    "description": "إدارة المشاريع المتقدمة للشركات والفرق الاحترافية.",
+    "image": "/uploads/products/1776455641506-86686594-344f-4fd5-bd88-5fb2aec395e6.webp"
+  },
+  {
+    "id": 17,
+    "productName": "Canva Pro 1 Year",
+    "platform": "Adobe",
+    "price": 17,
+    "stock": 45,
+    "delivery": "تفعيل بالحساب",
+    "guarantee": "حساب ثابت",
+    "description": "اشتراك Canva Pro لتصميم سريع للمحتوى التسويقي والاجتماعي.",
+    "image": "/uploads/products/1776455890029-1b1390b8-a01b-4cca-b483-3854f4118762.webp"
+  },
+  {
+    "id": 18,
+    "productName": "EA Play 12 Months",
+    "platform": "Steam",
+    "price": 24,
+    "stock": 26,
+    "delivery": "خلال 5 دقائق",
+    "guarantee": "ضمان اشتراك",
+    "description": "الوصول إلى مكتبة EA والألعاب الجديدة مع مزايا إضافية.",
+    "image": "/uploads/products/1776455780808-f600a4ca-5c81-4254-a33c-96cea5ce65ef.avif"
+  }
+]

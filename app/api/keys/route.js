@@ -351,7 +351,13 @@ export async function POST(request) {
 	try {
 		await saveKeysStore(keysStore);
 	} catch {
-		// Keep response successful even if persistence fails temporarily.
+		return NextResponse.json(
+			{
+				success: false,
+				message: "تم إنشاء المنتج في الذاكرة فقط وتعذر حفظه بشكل دائم. استخدم قاعدة بيانات للإنتاج.",
+			},
+			{ status: 500 }
+		);
 	}
 
 	return NextResponse.json(
@@ -427,7 +433,13 @@ export async function PUT(request) {
 	try {
 		await saveKeysStore(keysStore);
 	} catch {
-		// Keep response successful even if persistence fails temporarily.
+		return NextResponse.json(
+			{
+				success: false,
+				message: "تم تعديل المنتج في الذاكرة فقط وتعذر حفظ التعديل بشكل دائم. استخدم قاعدة بيانات للإنتاج.",
+			},
+			{ status: 500 }
+		);
 	}
 
 	return NextResponse.json({
@@ -464,7 +476,13 @@ export async function DELETE(request) {
 	try {
 		await saveKeysStore(keysStore);
 	} catch {
-		// Keep response successful even if persistence fails temporarily.
+		return NextResponse.json(
+			{
+				success: false,
+				message: "تم حذف المنتج في الذاكرة فقط وتعذر حفظ الحذف بشكل دائم. استخدم قاعدة بيانات للإنتاج.",
+			},
+			{ status: 500 }
+		);
 	}
 
 	return NextResponse.json({
