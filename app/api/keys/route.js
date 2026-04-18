@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 const productImageByPlatform = {
 	Windows: [
@@ -61,7 +64,31 @@ function resolveImageByProductName(productName) {
 	return foundEntry?.[1];
 }
 
-const keysStore = [
+function isExistingPublicAsset(filePath = "") {
+	if (!filePath || !filePath.startsWith("/")) return false;
+	const absolutePath = path.join(process.cwd(), "public", filePath.slice(1));
+	return existsSync(absolutePath);
+}
+
+function resolveSafeImage({ productName, platform, seed, preferredImage }) {
+	if (preferredImage && isExistingPublicAsset(preferredImage)) {
+		return preferredImage;
+	}
+
+	const byName = resolveImageByProductName(productName);
+	if (byName && isExistingPublicAsset(byName)) {
+		return byName;
+	}
+
+	const byPlatform = resolveProductImage(platform, seed);
+	if (byPlatform && isExistingPublicAsset(byPlatform)) {
+		return byPlatform;
+	}
+
+	return "/images/real/dev-setup.jpg";
+}
+
+const defaultKeysStore = [
 	{
 		id: 1,
 		productName: "Windows 11 Pro Key",
@@ -244,16 +271,53 @@ const keysStore = [
 	},
 ].map((item) => ({
 	...item,
-	image:
-		resolveImageByProductName(item.productName) ??
-		resolveProductImage(item.platform, item.id),
+	image: resolveSafeImage({
+		productName: item.productName,
+		platform: item.platform,
+		seed: item.id,
+	}),
 }));
 
+const keysStoreFilePath = path.join(process.cwd(), "data", "keys-store.json");
+let keysStoreCache = null;
+
+async function saveKeysStore(store) {
+	await mkdir(path.dirname(keysStoreFilePath), { recursive: true });
+	await writeFile(keysStoreFilePath, JSON.stringify(store, null, 2), "utf8");
+}
+
+async function getKeysStore() {
+	if (keysStoreCache) return keysStoreCache;
+
+	try {
+		const raw = await readFile(keysStoreFilePath, "utf8");
+		const parsed = JSON.parse(raw);
+		if (Array.isArray(parsed)) {
+			keysStoreCache = parsed;
+			return keysStoreCache;
+		}
+	} catch {
+		// Fall back to bundled defaults on first run or invalid file.
+	}
+
+	keysStoreCache = JSON.parse(JSON.stringify(defaultKeysStore));
+
+	try {
+		await saveKeysStore(keysStoreCache);
+	} catch {
+		// Ignore filesystem write failures and keep in-memory fallback.
+	}
+
+	return keysStoreCache;
+}
+
 export async function GET() {
+	const keysStore = await getKeysStore();
 	return NextResponse.json({ success: true, count: keysStore.length, data: keysStore });
 }
 
 export async function POST(request) {
+	const keysStore = await getKeysStore();
 	const body = await request.json();
 	const numericPrice = Number(body?.price);
 	const numericStock = Number(body?.stock ?? 0);
@@ -274,13 +338,21 @@ export async function POST(request) {
 		delivery: body.delivery ?? "تسليم فوري",
 		guarantee: body.guarantee ?? "ضمان استبدال لمدة 7 أيام",
 		description: body.description ?? "منتج جديد تمت إضافته من لوحة الإدارة.",
-		image:
-			body.image ??
-			resolveImageByProductName(body.productName) ??
-			resolveProductImage(body.platform ?? "General", Date.now()),
+		image: resolveSafeImage({
+			productName: body.productName,
+			platform: body.platform ?? "General",
+			seed: Date.now(),
+			preferredImage: body.image,
+		}),
 	};
 
 	keysStore.unshift(newProduct);
+
+	try {
+		await saveKeysStore(keysStore);
+	} catch {
+		// Keep response successful even if persistence fails temporarily.
+	}
 
 	return NextResponse.json(
 		{
@@ -293,6 +365,7 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
+	const keysStore = await getKeysStore();
 	const { searchParams } = new URL(request.url);
 	const idParam = searchParams.get("id");
 	const targetId = Number(idParam);
@@ -341,14 +414,21 @@ export async function PUT(request) {
 		delivery: body?.delivery ?? current.delivery,
 		guarantee: body?.guarantee ?? current.guarantee,
 		description: body?.description ?? current.description,
-		image:
-			body?.image ??
-			resolveImageByProductName(body?.productName ?? current.productName) ??
-			current.image ??
-			resolveProductImage(body?.platform ?? current.platform, current.id),
+		image: resolveSafeImage({
+			productName: body?.productName ?? current.productName,
+			platform: body?.platform ?? current.platform,
+			seed: current.id,
+			preferredImage: body?.image ?? current.image,
+		}),
 	};
 
 	keysStore[productIndex] = updatedProduct;
+
+	try {
+		await saveKeysStore(keysStore);
+	} catch {
+		// Keep response successful even if persistence fails temporarily.
+	}
 
 	return NextResponse.json({
 		success: true,
@@ -358,6 +438,7 @@ export async function PUT(request) {
 }
 
 export async function DELETE(request) {
+	const keysStore = await getKeysStore();
 	const { searchParams } = new URL(request.url);
 	const idParam = searchParams.get("id");
 	const targetId = Number(idParam);
@@ -379,6 +460,12 @@ export async function DELETE(request) {
 	}
 
 	const [deletedProduct] = keysStore.splice(productIndex, 1);
+
+	try {
+		await saveKeysStore(keysStore);
+	} catch {
+		// Keep response successful even if persistence fails temporarily.
+	}
 
 	return NextResponse.json({
 		success: true,
