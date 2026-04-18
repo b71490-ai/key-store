@@ -21,10 +21,27 @@ function normalizeCardNumber(value) {
 	return value.replace(/\D/g, "");
 }
 
+function detectCardScheme(normalized) {
+	if (/^4\d{12}(\d{3})?(\d{3})?$/.test(normalized)) return "visa";
+	if (/^(5[1-5]\d{14}|2(2[2-9]\d{12}|[3-6]\d{13}|7[01]\d{12}|720\d{12}))$/.test(normalized)) return "mastercard";
+	if (/^3[47]\d{13}$/.test(normalized)) return "amex";
+	if (/^6(?:011\d{12}|5\d{14}|4[4-9]\d{13})$/.test(normalized)) return "discover";
+	return null;
+}
+
 function isValidCardNumber(cardNumber) {
 	const normalized = normalizeCardNumber(cardNumber);
 
 	if (normalized.length < 13 || normalized.length > 19) {
+		return false;
+	}
+
+	// Reject obvious placeholders such as 0000... or 1111...
+	if (/^(\d)\1+$/.test(normalized)) {
+		return false;
+	}
+
+	if (!detectCardScheme(normalized)) {
 		return false;
 	}
 
@@ -78,6 +95,8 @@ function CheckoutContent() {
 	const [cardExpiry, setCardExpiry] = useState("");
 	const [cardCvc, setCardCvc] = useState("");
 	const [cardNumberError, setCardNumberError] = useState("");
+	const [cardHolderError, setCardHolderError] = useState("");
+	const [cardExpiryError, setCardExpiryError] = useState("");
 	const [customerName, setCustomerName] = useState("Ammar Saleh");
 	const [customerEmail, setCustomerEmail] = useState("ammar@example.com");
 	const [couponCode, setCouponCode] = useState("");
@@ -111,6 +130,52 @@ function CheckoutContent() {
 		setCardNumberError("");
 	};
 
+	const validateCardHolderLive = (value) => {
+		const trimmed = value.trim();
+
+		if (!trimmed.length) {
+			setCardHolderError("");
+			return;
+		}
+
+		if (trimmed.length < 3) {
+			setCardHolderError("اسم حامل البطاقة غير صالح.");
+			return;
+		}
+
+		setCardHolderError("");
+	};
+
+	const validateCardExpiryLive = (value) => {
+		if (!value.length) {
+			setCardExpiryError("");
+			return;
+		}
+
+		if (value.length < 5) {
+			setCardExpiryError("تاريخ الانتهاء غير مكتمل.");
+			return;
+		}
+
+		if (!isValidExpiry(value)) {
+			setCardExpiryError("تاريخ الانتهاء غير صالح.");
+			return;
+		}
+
+		setCardExpiryError("");
+	};
+
+	const isCheckoutDisabled =
+		!customerName.trim() ||
+		!customerEmail.trim() ||
+		!cardNumber ||
+		!cardHolder ||
+		!cardExpiry ||
+		!cardCvc ||
+		Boolean(cardNumberError) ||
+		Boolean(cardHolderError) ||
+		Boolean(cardExpiryError);
+
 	const handleCheckout = async () => {
 		if (!customerName.trim() || !customerEmail.trim()) {
 			await Swal.fire({
@@ -135,6 +200,7 @@ function CheckoutContent() {
 		}
 
 		if (cardHolder.trim().length < 3) {
+			setCardHolderError("اسم حامل البطاقة غير صالح.");
 			await Swal.fire({
 				title: "اسم حامل البطاقة غير صالح",
 				text: "يرجى إدخال اسم صحيح مكوّن من 3 أحرف على الأقل.",
@@ -158,6 +224,7 @@ function CheckoutContent() {
 		}
 
 		if (!isValidExpiry(cardExpiry)) {
+			setCardExpiryError("تاريخ الانتهاء غير صالح.");
 			await Swal.fire({
 				title: "تاريخ الانتهاء غير صالح",
 				text: "تأكد من إدخال التاريخ بصيغة MM/YY وأن البطاقة غير منتهية.",
@@ -180,6 +247,8 @@ function CheckoutContent() {
 		}
 
 		const normalizedCard = normalizeCardNumber(cardNumber);
+		setCardHolderError("");
+		setCardExpiryError("");
 		const maskedCard = `**** **** **** ${normalizedCard.slice(-4)}`;
 		const payload = {
 			order: {
@@ -361,16 +430,30 @@ function CheckoutContent() {
 							<label className="text-sm font-semibold text-slate-700">
 								اسم حامل البطاقة
 								<input
-									className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]"
+									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
+										cardHolderError
+											? "border-red-500 focus:border-red-500"
+											: "border-slate-200 focus:border-[#1475d1]"
+									}`}
 									placeholder="Ammar Saleh"
 									value={cardHolder}
-									onChange={(event) => setCardHolder(event.target.value)}
+									onChange={(event) => {
+										setCardHolder(event.target.value);
+										validateCardHolderLive(event.target.value);
+									}}
 								/>
+								{cardHolderError ? (
+									<p className="mt-2 text-xs font-semibold text-red-600">{cardHolderError}</p>
+								) : null}
 							</label>
 							<label className="text-sm font-semibold text-slate-700">
 								تاريخ الانتهاء
 								<input
-									className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]"
+									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
+										cardExpiryError
+											? "border-red-500 focus:border-red-500"
+											: "border-slate-200 focus:border-[#1475d1]"
+									}`}
 									placeholder="MM/YY"
 									value={cardExpiry}
 									onChange={(event) => {
@@ -379,8 +462,12 @@ function CheckoutContent() {
 											? `${numbers.slice(0, 2)}/${numbers.slice(2)}`
 											: numbers;
 										setCardExpiry(formatted);
+										validateCardExpiryLive(formatted);
 									}}
 								/>
+								{cardExpiryError ? (
+									<p className="mt-2 text-xs font-semibold text-red-600">{cardExpiryError}</p>
+								) : null}
 							</label>
 							<label className="text-sm font-semibold text-slate-700 md:col-span-2">
 								رمز الأمان CVC
@@ -445,7 +532,12 @@ function CheckoutContent() {
 					<button
 						type="button"
 						onClick={handleCheckout}
-						className="mt-8 w-full rounded-full bg-white px-5 py-3 font-extrabold text-[#0f3b78] transition hover:bg-blue-100"
+						disabled={isCheckoutDisabled}
+						className={`mt-8 w-full rounded-full px-5 py-3 font-extrabold transition ${
+							isCheckoutDisabled
+								? "cursor-not-allowed bg-slate-200 text-slate-500"
+								: "bg-white text-[#0f3b78] hover:bg-blue-100"
+						}`}
 					>
 						تأكيد الشراء
 					</button>
