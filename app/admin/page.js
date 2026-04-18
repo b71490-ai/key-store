@@ -22,9 +22,6 @@ import {
   FiUser,
 } from "react-icons/fi";
 
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "123456";
-
 const initialForm = {
   productName: "",
   platform: "Windows",
@@ -67,6 +64,7 @@ export default function AdminPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [form, setForm] = useState(initialForm);
   const [adSettings, setAdSettings] = useState(initialAdSettings);
@@ -79,6 +77,12 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProductId, setEditingProductId] = useState(null);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [adminPasswordForm, setAdminPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [isSavingAdminPassword, setIsSavingAdminPassword] = useState(false);
 
   const imagePreviewSrc = useMemo(() => {
     const candidate = String(form.image || "").trim();
@@ -187,22 +191,29 @@ export default function AdminPage() {
       return;
     }
 
-    if (username.trim() !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-      setLoginError("بيانات الأدمن غير صحيحة.");
-      return;
+    try {
+      setIsLoggingIn(true);
+      await axios.post("/api/admin-auth", {
+        username: username.trim(),
+        password,
+      });
+
+      window.sessionStorage.setItem("admin-auth", "ok");
+      setIsAuthenticated(true);
+      setLoginError("");
+
+      await Swal.fire({
+        title: "تم تسجيل الدخول",
+        text: "مرحبًا بك في لوحة الإدارة.",
+        icon: "success",
+        confirmButtonText: "متابعة",
+        confirmButtonColor: "#1475d1",
+      });
+    } catch (error) {
+      setLoginError(error?.response?.data?.message || "تعذر تسجيل الدخول الآن.");
+    } finally {
+      setIsLoggingIn(false);
     }
-
-    window.sessionStorage.setItem("admin-auth", "ok");
-    setIsAuthenticated(true);
-    setLoginError("");
-
-    await Swal.fire({
-      title: "تم تسجيل الدخول",
-      text: "مرحبًا بك في لوحة الإدارة.",
-      icon: "success",
-      confirmButtonText: "متابعة",
-      confirmButtonColor: "#1475d1",
-    });
   };
 
   const handleLogout = () => {
@@ -235,6 +246,14 @@ export default function AdminPage() {
         ...item,
         [field]: value,
       };
+    }));
+  };
+
+  const handleAdminPasswordChange = (event) => {
+    const { name, value } = event.target;
+    setAdminPasswordForm((current) => ({
+      ...current,
+      [name]: value,
     }));
   };
 
@@ -474,6 +493,65 @@ export default function AdminPage() {
     }
   };
 
+  const handleSaveAdminPassword = async (event) => {
+    event.preventDefault();
+
+    if (!adminPasswordForm.currentPassword || !adminPasswordForm.newPassword || !adminPasswordForm.confirmPassword) {
+      await Swal.fire({
+        title: "حقول ناقصة",
+        text: "يرجى تعبئة كلمة المرور الحالية والجديدة والتأكيد.",
+        icon: "warning",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#f59e0b",
+      });
+      return;
+    }
+
+    if (adminPasswordForm.newPassword !== adminPasswordForm.confirmPassword) {
+      await Swal.fire({
+        title: "عدم تطابق",
+        text: "تأكيد كلمة المرور غير مطابق للكلمة الجديدة.",
+        icon: "warning",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#f59e0b",
+      });
+      return;
+    }
+
+    try {
+      setIsSavingAdminPassword(true);
+      await axios.put("/api/admin-auth", {
+        currentPassword: adminPasswordForm.currentPassword,
+        newPassword: adminPasswordForm.newPassword,
+        confirmPassword: adminPasswordForm.confirmPassword,
+      });
+
+      setAdminPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      await Swal.fire({
+        title: "تم تحديث كلمة المرور",
+        text: "تم حفظ كلمة مرور الأدمن الجديدة بنجاح.",
+        icon: "success",
+        confirmButtonText: "ممتاز",
+        confirmButtonColor: "#2563eb",
+      });
+    } catch (error) {
+      await Swal.fire({
+        title: "فشل التحديث",
+        text: error?.response?.data?.message || "تعذر تحديث كلمة المرور الآن.",
+        icon: "error",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#dc2626",
+      });
+    } finally {
+      setIsSavingAdminPassword(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <main className="min-h-screen bg-[#f4f4f5] px-4 py-10 text-slate-800" dir="rtl">
@@ -515,8 +593,8 @@ export default function AdminPage() {
 
             {loginError ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{loginError}</div> : null}
 
-            <button type="submit" className="mt-2 inline-flex items-center justify-center rounded-full bg-[#1475d1] px-6 py-3 font-bold text-white transition hover:bg-[#0f5ca8]">
-              دخول لوحة التحكم
+            <button type="submit" disabled={isLoggingIn} className="mt-2 inline-flex items-center justify-center rounded-full bg-[#1475d1] px-6 py-3 font-bold text-white transition hover:bg-[#0f5ca8] disabled:cursor-not-allowed disabled:opacity-70">
+              {isLoggingIn ? "جارٍ تسجيل الدخول..." : "دخول لوحة التحكم"}
             </button>
           </form>
         </div>
@@ -643,6 +721,21 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
+          <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3"><FiLock className="text-2xl text-[#1475d1]" /></div><h2 className="text-2xl font-extrabold tracking-tight">إعدادات كلمة مرور الأدمن</h2></div>
+          <p className="mt-3 text-sm leading-7 text-slate-500">يمكنك تغيير كلمة مرور دخول لوحة التحكم من هنا. ستُطلب منك الكلمة الحالية للتأكيد.</p>
+
+          <form onSubmit={handleSaveAdminPassword} className="mt-6 grid gap-4 md:grid-cols-3">
+            <input name="currentPassword" type="password" value={adminPasswordForm.currentPassword} onChange={handleAdminPasswordChange} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="كلمة المرور الحالية" />
+            <input name="newPassword" type="password" value={adminPasswordForm.newPassword} onChange={handleAdminPasswordChange} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="كلمة المرور الجديدة" />
+            <input name="confirmPassword" type="password" value={adminPasswordForm.confirmPassword} onChange={handleAdminPasswordChange} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="تأكيد كلمة المرور الجديدة" />
+
+            <div className="md:col-span-3 flex flex-wrap items-center gap-3">
+              <button type="submit" disabled={isSavingAdminPassword} className="inline-flex items-center justify-center rounded-full bg-[#1475d1] px-6 py-3 font-bold text-white transition hover:bg-[#0f5ca8] disabled:cursor-not-allowed disabled:opacity-70">{isSavingAdminPassword ? "جارٍ الحفظ..." : "حفظ كلمة المرور الجديدة"}</button>
+            </div>
+          </form>
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
