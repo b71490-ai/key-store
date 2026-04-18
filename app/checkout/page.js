@@ -1,72 +1,26 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
-function CheckoutContent() {
-  const searchParams = useSearchParams();
-  const [cart, setCart] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const userId = searchParams.get("user") || "guest@keystore.local";
-  const productName = searchParams.get("product");
-  const productPrice = Number(searchParams.get("price") || 0);
-  const productImage = searchParams.get("image") || "";
+export default function Checkout() {
+  const [cart, setCart] = useState(null);
 
   useEffect(() => {
-    let isMounted = true;
+    const data = localStorage.getItem("cart");
+    if (data) {
+      setCart(JSON.parse(data));
+    } else {
+      setCart([]);
+    }
+  }, []);
 
-    const loadCart = async () => {
-      setLoading(true);
-
-      try {
-        if (productName) {
-          await fetch("/api/cart", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId,
-              item: {
-                name: productName,
-                price: Number.isFinite(productPrice) ? productPrice : 0,
-                image: productImage,
-                quantity: 1,
-              },
-            }),
-          });
-        }
-
-        const response = await fetch(`/api/cart?userId=${encodeURIComponent(userId)}`, {
-          cache: "no-store",
-        });
-        const result = await response.json();
-
-        if (isMounted) {
-          setCart(Array.isArray(result?.data) ? result.data : []);
-        }
-      } catch {
-        if (isMounted) {
-          setCart([]);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadCart();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [productImage, productName, productPrice, userId]);
-
-  if (loading) {
-    return <div>جاري تحميل السلة...</div>;
+  // ⛔ لسه ما حمل البيانات
+  if (cart === null) {
+    return <div>جاري التحميل...</div>;
   }
 
-  if (!cart || cart.length === 0) {
+  // 🛒 السلة فاضية
+  if (cart.length === 0) {
     return <div>السلة فارغة</div>;
   }
 
@@ -77,13 +31,5 @@ function CheckoutContent() {
         <div key={index}>{item.name}</div>
       ))}
     </div>
-  );
-}
-
-export default function Checkout() {
-  return (
-    <Suspense fallback={<div>جاري تحميل الصفحة...</div>}>
-      <CheckoutContent />
-    </Suspense>
   );
 }
