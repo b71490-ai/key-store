@@ -3,6 +3,50 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+const MAX_ALLOWED_PRICE = 15;
+
+const canonicalPriceByProductName = {
+	"Windows 11 Pro Key": 14.99,
+	"Office 2021 Professional": 13.5,
+	"Adobe Creative Cloud 1 Year": 12.99,
+	"Windows 10 Pro Key": 10.75,
+	"Windows 11 Home Key": 9.99,
+	"Office 365 Family 1 Year": 11.49,
+	"Office 2021 Home & Student": 10.25,
+	"Microsoft Visio Professional": 12.5,
+	"Adobe Photoshop 1 Year": 11.99,
+	"Adobe Premiere Pro 1 Year": 12.25,
+	"Adobe Illustrator 1 Year": 11.75,
+	"Steam Wallet 50 USD": 14.5,
+	"Steam Wallet 20 USD": 8.99,
+	"Xbox Game Pass Ultimate 3 Months": 9.5,
+	"Windows Server 2022 Standard": 14.25,
+	"Project Professional 2021": 13.25,
+	"Canva Pro 1 Year": 7.99,
+	"EA Play 12 Months": 8.5,
+};
+
+const fallbackPricePalette = [
+	6.99,
+	7.5,
+	8.25,
+	8.99,
+	9.49,
+	9.99,
+	10.5,
+	10.99,
+	11.49,
+	11.99,
+	12.5,
+	12.99,
+	13.5,
+	13.99,
+	14.25,
+	14.5,
+	14.75,
+	14.99,
+];
+
 const productImageByPlatform = {
 	Windows: [
 		"/images/real/laptop.jpg",
@@ -86,6 +130,24 @@ function resolveSafeImage({ productName, platform, seed, preferredImage }) {
 	}
 
 	return "/images/real/dev-setup.jpg";
+}
+
+function getCanonicalPrice(productName, seed = 0) {
+	const exact = canonicalPriceByProductName[productName];
+	if (typeof exact === "number") return exact;
+
+	return fallbackPricePalette[Math.abs(seed) % fallbackPricePalette.length];
+}
+
+function normalizeProductPrice(item, indexSeed = 0) {
+	const fallback = getCanonicalPrice(item?.productName, indexSeed);
+	const parsed = Number(item?.price);
+
+	if (Number.isNaN(parsed) || parsed <= 0 || parsed > MAX_ALLOWED_PRICE) {
+		return fallback;
+	}
+
+	return Number(parsed.toFixed(2));
 }
 
 const defaultKeysStore = [
@@ -271,6 +333,7 @@ const defaultKeysStore = [
 	},
 ].map((item) => ({
 	...item,
+	price: normalizeProductPrice(item, item.id),
 	image: resolveSafeImage({
 		productName: item.productName,
 		platform: item.platform,
@@ -293,7 +356,17 @@ async function getKeysStore() {
 		const raw = await readFile(keysStoreFilePath, "utf8");
 		const parsed = JSON.parse(raw);
 		if (Array.isArray(parsed)) {
-			keysStoreCache = parsed;
+			keysStoreCache = parsed.map((item, index) => ({
+				...item,
+				price: normalizeProductPrice(item, index),
+			}));
+
+			try {
+				await saveKeysStore(keysStoreCache);
+			} catch {
+				// Keep runtime data even if normalized write fails.
+			}
+
 			return keysStoreCache;
 		}
 	} catch {
@@ -329,11 +402,21 @@ export async function POST(request) {
 		);
 	}
 
+	if (numericPrice > MAX_ALLOWED_PRICE) {
+		return NextResponse.json(
+			{ success: false, message: `السعر يجب ألا يتجاوز ${MAX_ALLOWED_PRICE} دولار.` },
+			{ status: 400 }
+		);
+	}
+
 	const newProduct = {
 		id: Date.now(),
 		productName: body.productName,
 		platform: body.platform ?? "General",
-		price: numericPrice,
+		price: normalizeProductPrice(
+			{ productName: body.productName, price: numericPrice },
+			Date.now()
+		),
 		stock: Number.isNaN(numericStock) || numericStock < 0 ? 0 : numericStock,
 		delivery: body.delivery ?? "تسليم فوري",
 		guarantee: body.guarantee ?? "ضمان استبدال لمدة 7 أيام",
@@ -407,11 +490,21 @@ export async function PUT(request) {
 		);
 	}
 
+	if (parsedPrice > MAX_ALLOWED_PRICE) {
+		return NextResponse.json(
+			{ success: false, message: `السعر يجب ألا يتجاوز ${MAX_ALLOWED_PRICE} دولار.` },
+			{ status: 400 }
+		);
+	}
+
 	const updatedProduct = {
 		...current,
 		productName: body?.productName ?? current.productName,
 		platform: body?.platform ?? current.platform,
-		price: parsedPrice,
+		price: normalizeProductPrice(
+			{ productName: body?.productName ?? current.productName, price: parsedPrice },
+			current.id
+		),
 		stock: Number.isNaN(parsedStock) || parsedStock < 0 ? 0 : parsedStock,
 		delivery: body?.delivery ?? current.delivery,
 		guarantee: body?.guarantee ?? current.guarantee,
