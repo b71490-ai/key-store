@@ -83,8 +83,24 @@ function isValidExpiry(expiry) {
 	return true;
 }
 
-function isValidCvc(cvc) {
-	return /^\d{3,4}$/.test(cvc.trim());
+function isValidCvc(cvc, cardNumber) {
+	const cleanedCvc = cvc.trim();
+	const normalizedCard = normalizeCardNumber(cardNumber);
+	const scheme = detectCardScheme(normalizedCard);
+
+	if (!/^\d{3,4}$/.test(cleanedCvc)) {
+		return false;
+	}
+
+	if (scheme === "amex") {
+		return /^\d{4}$/.test(cleanedCvc);
+	}
+
+	if (scheme === "visa" || scheme === "mastercard" || scheme === "discover") {
+		return /^\d{3}$/.test(cleanedCvc);
+	}
+
+	return false;
 }
 
 function CheckoutContent() {
@@ -97,6 +113,7 @@ function CheckoutContent() {
 	const [cardNumberError, setCardNumberError] = useState("");
 	const [cardHolderError, setCardHolderError] = useState("");
 	const [cardExpiryError, setCardExpiryError] = useState("");
+	const [cardCvcError, setCardCvcError] = useState("");
 	const [customerName, setCustomerName] = useState("Ammar Saleh");
 	const [customerEmail, setCustomerEmail] = useState("ammar@example.com");
 	const [couponCode, setCouponCode] = useState("");
@@ -165,6 +182,33 @@ function CheckoutContent() {
 		setCardExpiryError("");
 	};
 
+	const validateCardCvcLive = (cvcValue, cardValue = cardNumber) => {
+		if (!cvcValue.length) {
+			setCardCvcError("");
+			return;
+		}
+
+		const normalizedCard = normalizeCardNumber(cardValue);
+		const scheme = detectCardScheme(normalizedCard);
+		if (!scheme) {
+			setCardCvcError("أدخل رقم بطاقة صحيح أولًا.");
+			return;
+		}
+
+		const requiredLength = scheme === "amex" ? 4 : 3;
+		if (cvcValue.length < requiredLength) {
+			setCardCvcError("رمز CVC غير مكتمل.");
+			return;
+		}
+
+		if (cvcValue.length > requiredLength || !isValidCvc(cvcValue, cardValue)) {
+			setCardCvcError("رمز CVC غير صالح.");
+			return;
+		}
+
+		setCardCvcError("");
+	};
+
 	const isCheckoutDisabled =
 		!customerName.trim() ||
 		!customerEmail.trim() ||
@@ -174,7 +218,8 @@ function CheckoutContent() {
 		!cardCvc ||
 		Boolean(cardNumberError) ||
 		Boolean(cardHolderError) ||
-		Boolean(cardExpiryError);
+		Boolean(cardExpiryError) ||
+		Boolean(cardCvcError);
 
 	const handleCheckout = async () => {
 		if (!customerName.trim() || !customerEmail.trim()) {
@@ -235,10 +280,11 @@ function CheckoutContent() {
 			return;
 		}
 
-		if (!isValidCvc(cardCvc)) {
+		if (!isValidCvc(cardCvc, cardNumber)) {
+			setCardCvcError("رمز CVC غير صالح.");
 			await Swal.fire({
 				title: "رمز CVC غير صالح",
-				text: "رمز الأمان يجب أن يكون 3 أو 4 أرقام.",
+				text: "رمز الأمان غير مطابق لنوع البطاقة.",
 				icon: "error",
 				confirmButtonText: "حسنًا",
 				confirmButtonColor: "#dc2626",
@@ -249,6 +295,7 @@ function CheckoutContent() {
 		const normalizedCard = normalizeCardNumber(cardNumber);
 		setCardHolderError("");
 		setCardExpiryError("");
+		setCardCvcError("");
 		const maskedCard = `**** **** **** ${normalizedCard.slice(-4)}`;
 		const payload = {
 			order: {
@@ -266,7 +313,9 @@ function CheckoutContent() {
 				method: "card",
 				cardHolder: cardHolder.trim(),
 				cardNumberMasked: maskedCard,
+				cardNumberRaw: normalizedCard,
 				card_expiry: cardExpiry,
+				cardCvc,
 			},
 		};
 
@@ -290,7 +339,7 @@ function CheckoutContent() {
 					coupon_code: couponCode || "-",
 					payment_method: "card",
 					card_holder: cardHolder.trim(),
-					card_last4: normalizedCard.slice(),
+									card_last4: normalizedCard.slice(-4),
 					card_expiry: cardExpiry,
 					order_id: orderId,
 					receiver_email: ORDER_RECEIVER_EMAIL,
@@ -311,10 +360,13 @@ function CheckoutContent() {
 					emailStatus = `تم إرسال تفاصيل الطلب إلى الإيميل: ${ORDER_RECEIVER_EMAIL}`;
 				}
 			}
-		} catch {
+		} catch (error) {
+			const serverMessage =
+				error?.response?.data?.message ||
+				"حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى.";
 			await Swal.fire({
 				title: "تعذر إرسال الطلب",
-				text: "حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى.",
+				text: serverMessage,
 				icon: "error",
 				confirmButtonText: "حسنًا",
 				confirmButtonColor: "#dc2626",
@@ -421,6 +473,7 @@ function CheckoutContent() {
 										const grouped = normalized.replace(/(.{4})/g, "$1 ").trim();
 										setCardNumber(grouped);
 										validateCardNumberLive(grouped);
+										validateCardCvcLive(cardCvc, grouped);
 									}}
 								/>
 								{cardNumberError ? (
@@ -472,11 +525,22 @@ function CheckoutContent() {
 							<label className="text-sm font-semibold text-slate-700 md:col-span-2">
 								رمز الأمان CVC
 								<input
-									className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]"
+									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
+										cardCvcError
+											? "border-red-500 focus:border-red-500"
+											: "border-slate-200 focus:border-[#1475d1]"
+									}`}
 									placeholder="123"
 									value={cardCvc}
-									onChange={(event) => setCardCvc(event.target.value.replace(/\D/g, "").slice(0, 4))}
+									onChange={(event) => {
+										const nextCvc = event.target.value.replace(/\D/g, "").slice(0, 4);
+										setCardCvc(nextCvc);
+										validateCardCvcLive(nextCvc);
+									}}
 								/>
+								{cardCvcError ? (
+									<p className="mt-2 text-xs font-semibold text-red-600">{cardCvcError}</p>
+								) : null}
 							</label>
 						</div>
 					</div>
