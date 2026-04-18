@@ -18,8 +18,36 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://key-store-gamma.vercel.app"),
   title: "Key Store",
   description: "Digital storefront for software keys and license management.",
+  icons: {
+    icon: "/icon.jpg",
+    apple: "/apple-icon.jpg",
+    shortcut: "/icon.jpg",
+  },
+  openGraph: {
+    title: "Key Store",
+    description: "Digital storefront for software keys and license management.",
+    url: "https://key-store-gamma.vercel.app",
+    siteName: "Key Store",
+    images: [
+      {
+        url: "/opengraph-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Key Store Microsoft-style preview",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Key Store",
+    description: "Digital storefront for software keys and license management.",
+    images: ["/opengraph-image.jpg"],
+  },
 };
 
 export default function RootLayout({
