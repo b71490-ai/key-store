@@ -8,7 +8,9 @@
     "delivery": "تسليم فوري",
     "guarantee": "ضمان استبدال لمدة 30 يوم",
     "description": "مفتاح رقمي أصلي لتفعيل ويندوز 11 برو على جهاز واحد.",
-    "image": "/uploads/products/1776453299953-cfa36b44-803b-4005-9b52-8e6eb6153263.avif"
+    "image": "/uploads/products/1776453299953-cfa36b44-803b-4005-9b52-8e6eb6153263.avif",
+    "isAdEnabled": false,
+    "adPriority": 1
   },
   {
     "id": 2,
@@ -19,7 +21,9 @@
     "delivery": "خلال 5 دقائق",
     "guarantee": "دعم فني بعد الشراء",
     "description": "حزمة أوفيس كاملة للمستخدمين الذين يحتاجون Word و Excel و PowerPoint.",
-    "image": "/uploads/products/1776453511014-23b8bcc7-d621-456c-94fb-864288b5c4c6.jpg"
+    "image": "/uploads/products/1776453511014-23b8bcc7-d621-456c-94fb-864288b5c4c6.jpg",
+    "isAdEnabled": true,
+    "adPriority": 2
   },
   {
     "id": 3,
@@ -30,7 +34,9 @@
     "delivery": "تفعيل بالبريد الإلكتروني",
     "guarantee": "حساب موثوق لمدة سنة",
     "description": "اشتراك سنوي مخصص للمصممين وصناع المحتوى مع وصول كامل لتطبيقات Adobe.",
-    "image": "/uploads/products/1776453632023-f8fe9758-7a76-4263-8c3c-8a8d317d6278.jpg"
+    "image": "/uploads/products/1776453632023-f8fe9758-7a76-4263-8c3c-8a8d317d6278.jpg",
+    "isAdEnabled": true,
+    "adPriority": 3
   },
   {
     "id": 4,
@@ -41,7 +47,9 @@
     "delivery": "تسليم فوري",
     "guarantee": "ضمان 30 يوم",
     "description": "مفتاح رقمي لتفعيل ويندوز 10 برو للأجهزة المكتبية والمحمولة.",
-    "image": "/uploads/products/1776453771646-eb8dc436-5e39-4565-a8bf-a145c7730525.jpg"
+    "image": "/uploads/products/1776453771646-eb8dc436-5e39-4565-a8bf-a145c7730525.jpg",
+    "isAdEnabled": true,
+    "adPriority": 4
   },
   {
     "id": 5,
@@ -52,7 +60,9 @@
     "delivery": "خلال دقيقتين",
     "guarantee": "ضمان تفعيل",
     "description": "نسخة منزلية مثالية للاستخدام اليومي مع تحديثات رسمية.",
-    "image": "/uploads/products/1776453951187-179d2ece-32d9-4004-8c3d-8f9ceb085b37.jpg"
+    "image": "/uploads/products/1776453951187-179d2ece-32d9-4004-8c3d-8f9ceb085b37.jpg",
+    "isAdEnabled": true,
+    "adPriority": 5
   },
   {
     "id": 6,
@@ -63,7 +73,9 @@
     "delivery": "بريد إلكتروني",
     "guarantee": "ضمان سنة كاملة",
     "description": "اشتراك عائلي يدعم عدة مستخدمين مع OneDrive وتطبيقات Office.",
-    "image": "/uploads/products/1776454118715-f6d54cd0-a345-47b2-8459-57fe1558e254.jpg"
+    "image": "/uploads/products/1776454118715-f6d54cd0-a345-47b2-8459-57fe1558e254.jpg",
+    "isAdEnabled": true,
+    "adPriority": 6
   },
   {
     "id": 7,
@@ -74,7 +86,9 @@
     "delivery": "تسليم فوري",
     "guarantee": "دعم فني 90 يوم",
     "description": "Word و Excel و PowerPoint بترخيص دائم للاستخدام الدراسي.",
-    "image": "/uploads/products/1776454390486-88d6d493-d163-4806-a55c-1ef8ac5ce15e.jpg"
+    "image": "/uploads/products/1776454390486-88d6d493-d163-4806-a55c-1ef8ac5ce15e.jpg",
+    "isAdEnabled": true,
+    "adPriority": 7
   },
   {
     "id": 8,
@@ -85,7 +99,9 @@
     "delivery": "خلال 5 دقائق",
     "guarantee": "ضمان استبدال",
     "description": "أداة احترافية لإنشاء المخططات الهندسية والتنظيمية.",
-    "image": "/uploads/products/1776454541323-e7754877-59e5-428d-8ac0-4dfdb0ad8023.webp"
+    "image": "/uploads/products/1776454541323-e7754877-59e5-428d-8ac0-4dfdb0ad8023.webp",
+    "isAdEnabled": false,
+    "adPriority": 8
   },
   {
     "id": 9,
@@ -96,7 +112,9 @@
     "delivery": "بريد إلكتروني",
     "guarantee": "حساب موثوق",
     "description": "اشتراك فوتوشوب سنوي للمصممين وصناع المحتوى.",
-    "image": "/uploads/products/1776454711247-9634ac00-f6de-4181-8789-dd000da3d2c6.webp"
+    "image": "/uploads/products/1776454711247-9634ac00-f6de-4181-8789-dd000da3d2c6.webp",
+    "isAdEnabled": false,
+    "adPriority": 9
   },
   {
     "id": 10,
@@ -107,7 +125,9 @@
     "delivery": "تفعيل بالحساب",
     "guarantee": "ضمان 12 شهر",
     "description": "تحرير فيديو احترافي مع تحديثات مستمرة طوال السنة.",
-    "image": "/uploads/products/1776454810122-241bfdb0-0192-4586-8852-8344fafad0bc.webp"
+    "image": "/uploads/products/1776454810122-241bfdb0-0192-4586-8852-8344fafad0bc.webp",
+    "isAdEnabled": false,
+    "adPriority": 10
   },
   {
     "id": 11,
@@ -118,7 +138,9 @@
     "delivery": "خلال 10 دقائق",
     "guarantee": "دعم مباشر",
     "description": "برنامج تصميم المتجهات للشعارات والهوية البصرية.",
-    "image": "/uploads/products/1776454950695-4be8ac27-5196-485a-8bcc-3ab427802135.jpg"
+    "image": "/uploads/products/1776454950695-4be8ac27-5196-485a-8bcc-3ab427802135.jpg",
+    "isAdEnabled": false,
+    "adPriority": 11
   },
   {
     "id": 12,
@@ -129,7 +151,9 @@
     "delivery": "تسليم فوري",
     "guarantee": "كود صالح 100%",
     "description": "رصيد ستيم لشحن الحساب وشراء الألعاب مباشرة.",
-    "image": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg"
+    "image": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg",
+    "isAdEnabled": false,
+    "adPriority": 12
   },
   {
     "id": 13,
@@ -140,7 +164,9 @@
     "delivery": "خلال دقيقة",
     "guarantee": "استبدال عند المشكلة",
     "description": "بطاقة شحن ستيم بقيمة 20 دولار لألعابك المفضلة.",
-    "image": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg"
+    "image": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg",
+    "isAdEnabled": false,
+    "adPriority": 13
   },
   {
     "id": 14,
@@ -151,7 +177,9 @@
     "delivery": "تسليم فوري",
     "guarantee": "ضمان تفعيل",
     "description": "اشتراك 3 أشهر للوصول إلى مكتبة ألعاب ضخمة على Xbox وPC.",
-    "image": "/uploads/products/1776455375739-f8bdb87e-6d10-4c60-a065-d58d19c6793e.jpg"
+    "image": "/uploads/products/1776455375739-f8bdb87e-6d10-4c60-a065-d58d19c6793e.jpg",
+    "isAdEnabled": false,
+    "adPriority": 14
   },
   {
     "id": 15,
@@ -162,7 +190,9 @@
     "delivery": "خلال 15 دقيقة",
     "guarantee": "دعم إعداد أولي",
     "description": "مفتاح سيرفر رسمي مناسب لبيئات العمل والبنية التحتية.",
-    "image": "/uploads/products/1776455494276-62406757-b171-419b-9c8b-ee6b70c194c3.png"
+    "image": "/uploads/products/1776455494276-62406757-b171-419b-9c8b-ee6b70c194c3.png",
+    "isAdEnabled": false,
+    "adPriority": 15
   },
   {
     "id": 16,
@@ -173,7 +203,9 @@
     "delivery": "بريد إلكتروني",
     "guarantee": "ضمان 30 يوم",
     "description": "إدارة المشاريع المتقدمة للشركات والفرق الاحترافية.",
-    "image": "/uploads/products/1776455641506-86686594-344f-4fd5-bd88-5fb2aec395e6.webp"
+    "image": "/uploads/products/1776455641506-86686594-344f-4fd5-bd88-5fb2aec395e6.webp",
+    "isAdEnabled": false,
+    "adPriority": 16
   },
   {
     "id": 17,
@@ -184,7 +216,9 @@
     "delivery": "تفعيل بالحساب",
     "guarantee": "حساب ثابت",
     "description": "اشتراك Canva Pro لتصميم سريع للمحتوى التسويقي والاجتماعي.",
-    "image": "/uploads/products/1776455890029-1b1390b8-a01b-4cca-b483-3854f4118762.webp"
+    "image": "/uploads/products/1776455890029-1b1390b8-a01b-4cca-b483-3854f4118762.webp",
+    "isAdEnabled": false,
+    "adPriority": 17
   },
   {
     "id": 18,
@@ -195,6 +229,8 @@
     "delivery": "خلال 5 دقائق",
     "guarantee": "ضمان اشتراك",
     "description": "الوصول إلى مكتبة EA والألعاب الجديدة مع مزايا إضافية.",
-    "image": "/uploads/products/1776455780808-f600a4ca-5c81-4254-a33c-96cea5ce65ef.avif"
+    "image": "/uploads/products/1776455780808-f600a4ca-5c81-4254-a33c-96cea5ce65ef.avif",
+    "isAdEnabled": false,
+    "adPriority": 18
   }
 ]

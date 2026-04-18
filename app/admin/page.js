@@ -30,10 +30,23 @@ const initialForm = {
   platform: "Windows",
   price: "",
   stock: "",
+  isAdEnabled: false,
+  adPriority: "1",
   delivery: "تسليم فوري",
   guarantee: "ضمان استبدال لمدة 7 أيام",
   description: "",
   image: "",
+};
+
+const initialAdSettings = {
+  sectionTitle: "إعلانات وعروض من نفس المنتجات",
+  badgeText: "عرض متحرك",
+  autoRotateEnabled: true,
+  autoRotateMs: "3800",
+  pauseOnHover: true,
+  maxAds: "4",
+  showProgress: true,
+  showThumbnails: true,
 };
 
 function formatDate(value) {
@@ -56,7 +69,9 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState("");
 
   const [form, setForm] = useState(initialForm);
+  const [adSettings, setAdSettings] = useState(initialAdSettings);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingAdSettings, setIsSavingAdSettings] = useState(false);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -94,6 +109,25 @@ export default function AdminPage() {
     }
   };
 
+  const fetchAdSettings = async () => {
+    try {
+      const response = await axios.get("/api/ad-settings");
+      const data = response.data?.data ?? {};
+      setAdSettings({
+        sectionTitle: data.sectionTitle ?? initialAdSettings.sectionTitle,
+        badgeText: data.badgeText ?? initialAdSettings.badgeText,
+        autoRotateEnabled: data.autoRotateEnabled ?? initialAdSettings.autoRotateEnabled,
+        autoRotateMs: String(data.autoRotateMs ?? initialAdSettings.autoRotateMs),
+        pauseOnHover: data.pauseOnHover ?? initialAdSettings.pauseOnHover,
+        maxAds: String(data.maxAds ?? initialAdSettings.maxAds),
+        showProgress: data.showProgress ?? initialAdSettings.showProgress,
+        showThumbnails: data.showThumbnails ?? initialAdSettings.showThumbnails,
+      });
+    } catch {
+      setAdSettings(initialAdSettings);
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     setIsAuthenticated(window.sessionStorage.getItem("admin-auth") === "ok");
@@ -103,6 +137,7 @@ export default function AdminPage() {
     if (!isAuthenticated) return;
     fetchProducts();
     fetchOrders();
+    fetchAdSettings();
   }, [isAuthenticated]);
 
   const filteredProducts = useMemo(() => {
@@ -129,6 +164,20 @@ export default function AdminPage() {
       totalRevenue,
     };
   }, [products, orders]);
+
+  const adManagedProducts = useMemo(() => {
+    return [...products].sort((a, b) => {
+      const aEnabled = Boolean(a.isAdEnabled);
+      const bEnabled = Boolean(b.isAdEnabled);
+      if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
+
+      const aPriority = Number(a.adPriority ?? 999);
+      const bPriority = Number(b.adPriority ?? 999);
+      if (aPriority !== bPriority) return aPriority - bPriority;
+
+      return String(a.productName || "").localeCompare(String(b.productName || ""), "ar");
+    });
+  }, [products]);
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -164,8 +213,29 @@ export default function AdminPage() {
   };
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+    const { name, value, type, checked } = event.target;
+    setForm((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleAdSettingsChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setAdSettings((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleAdProductChange = (productId, field, value) => {
+    setProducts((current) => current.map((item) => {
+      if (item.id !== productId) return item;
+      return {
+        ...item,
+        [field]: value,
+      };
+    }));
   };
 
   const handleImageSelection = async (event) => {
@@ -211,6 +281,8 @@ export default function AdminPage() {
       platform: item.platform ?? "General",
       price: String(item.price ?? ""),
       stock: String(item.stock ?? ""),
+      isAdEnabled: Boolean(item.isAdEnabled),
+      adPriority: String(item.adPriority ?? "1"),
       delivery: item.delivery ?? "تسليم فوري",
       guarantee: item.guarantee ?? "ضمان استبدال لمدة 7 أيام",
       description: item.description ?? "",
@@ -251,6 +323,8 @@ export default function AdminPage() {
         platform: form.platform,
         price: Number(form.price),
         stock: Number(form.stock || 0),
+        isAdEnabled: Boolean(form.isAdEnabled),
+        adPriority: Number(form.adPriority || 1),
         delivery: form.delivery,
         guarantee: form.guarantee,
         description: form.description,
@@ -317,6 +391,86 @@ export default function AdminPage() {
         confirmButtonText: "حسنًا",
         confirmButtonColor: "#dc2626",
       });
+    }
+  };
+
+  const handleSaveAdSettings = async (event) => {
+    event.preventDefault();
+
+    try {
+      setIsSavingAdSettings(true);
+      const payload = {
+        sectionTitle: adSettings.sectionTitle,
+        badgeText: adSettings.badgeText,
+        autoRotateEnabled: Boolean(adSettings.autoRotateEnabled),
+        autoRotateMs: Number(adSettings.autoRotateMs || 3800),
+        pauseOnHover: Boolean(adSettings.pauseOnHover),
+        maxAds: Number(adSettings.maxAds || 4),
+        showProgress: Boolean(adSettings.showProgress),
+        showThumbnails: Boolean(adSettings.showThumbnails),
+      };
+
+      await axios.put("/api/ad-settings", payload);
+
+      await Swal.fire({
+        title: "تم حفظ إعدادات الإعلانات",
+        text: "تم تحديث إعدادات شاشة الإعلانات بنجاح.",
+        icon: "success",
+        confirmButtonText: "ممتاز",
+        confirmButtonColor: "#2563eb",
+      });
+    } catch (error) {
+      const message = error?.response?.data?.message || "تعذر حفظ إعدادات الإعلانات.";
+      await Swal.fire({
+        title: "فشل الحفظ",
+        text: message,
+        icon: "error",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#dc2626",
+      });
+    } finally {
+      setIsSavingAdSettings(false);
+    }
+  };
+
+  const handleSaveAdProducts = async () => {
+    const productsToUpdate = products.filter((item) => item.isAdEnabled || item.adPriority);
+
+    try {
+      setIsSavingAdSettings(true);
+      await Promise.all(productsToUpdate.map((item) => axios.put(`/api/keys?id=${item.id}`, {
+        productName: item.productName,
+        platform: item.platform,
+        price: Number(item.price),
+        stock: Number(item.stock || 0),
+        delivery: item.delivery,
+        guarantee: item.guarantee,
+        description: item.description,
+        image: item.image,
+        isAdEnabled: Boolean(item.isAdEnabled),
+        adPriority: Number(item.adPriority || 1),
+      })));
+
+      await fetchProducts();
+
+      await Swal.fire({
+        title: "تم حفظ اختيار الإعلانات",
+        text: "تم تحديث المنتجات التي تظهر في شاشة الإعلانات بنجاح.",
+        icon: "success",
+        confirmButtonText: "ممتاز",
+        confirmButtonColor: "#2563eb",
+      });
+    } catch (error) {
+      const message = error?.response?.data?.message || "تعذر حفظ المنتجات الإعلانية.";
+      await Swal.fire({
+        title: "فشل الحفظ",
+        text: message,
+        icon: "error",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#dc2626",
+      });
+    } finally {
+      setIsSavingAdSettings(false);
     }
   };
 
@@ -442,6 +596,53 @@ export default function AdminPage() {
               ) : null}
             </div>
           </form>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
+          <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3"><FiImage className="text-2xl text-[#1475d1]" /></div><h2 className="text-2xl font-extrabold tracking-tight">إعدادات الإعلانات</h2></div>
+          <p className="mt-3 text-sm leading-7 text-slate-500">هذه الإعدادات تتحكم في عنوان قسم الإعلانات، سرعة الحركة، وعدد العناصر المعروضة داخل السلايدر.</p>
+          <form onSubmit={handleSaveAdSettings} className="mt-6 grid gap-4 md:grid-cols-2">
+            <input name="sectionTitle" value={adSettings.sectionTitle} onChange={handleAdSettingsChange} className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="عنوان قسم الإعلانات" />
+            <input name="badgeText" value={adSettings.badgeText} onChange={handleAdSettingsChange} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="نص الشارة" />
+            <input name="maxAds" value={adSettings.maxAds} onChange={handleAdSettingsChange} type="number" min="1" max="12" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="عدد الإعلانات" />
+            <input name="autoRotateMs" value={adSettings.autoRotateMs} onChange={handleAdSettingsChange} type="number" min="1500" max="15000" step="100" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="مدة الحركة بالمللي ثانية" />
+            <div className="md:col-span-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" name="autoRotateEnabled" checked={Boolean(adSettings.autoRotateEnabled)} onChange={handleAdSettingsChange} /> تفعيل الحركة التلقائية</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" name="pauseOnHover" checked={Boolean(adSettings.pauseOnHover)} onChange={handleAdSettingsChange} /> إيقاف عند المرور</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" name="showProgress" checked={Boolean(adSettings.showProgress)} onChange={handleAdSettingsChange} /> إظهار شريط التقدم</label>
+              <label className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"><input type="checkbox" name="showThumbnails" checked={Boolean(adSettings.showThumbnails)} onChange={handleAdSettingsChange} /> إظهار الصور المصغرة</label>
+            </div>
+            <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+              <button type="submit" disabled={isSavingAdSettings} className="inline-flex items-center justify-center rounded-full bg-[#1475d1] px-6 py-3 font-bold text-white transition hover:bg-[#0f5ca8] disabled:cursor-not-allowed disabled:opacity-70">{isSavingAdSettings ? "جارٍ الحفظ..." : "حفظ إعدادات الإعلانات"}</button>
+              <button type="button" onClick={fetchAdSettings} className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 transition hover:bg-slate-50">إعادة تحميل الإعدادات</button>
+            </div>
+          </form>
+
+          <div className="mt-8 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-extrabold tracking-tight text-slate-900">اختيار الإعلانات التي تظهر</h3>
+                <p className="mt-1 text-sm text-slate-500">فعّل فقط المنتجات التي تريد ظهورها في السلايدر، وحدد ترتيبها من هنا.</p>
+              </div>
+              <button type="button" onClick={handleSaveAdProducts} disabled={isSavingAdSettings} className="inline-flex items-center justify-center rounded-full bg-[#0f5ca8] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0c4b88] disabled:cursor-not-allowed disabled:opacity-70">{isSavingAdSettings ? "جارٍ الحفظ..." : "حفظ اختيار الإعلانات"}</button>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {adManagedProducts.map((item) => (
+                <div key={`ad-manage-${item.id}`} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-[1.4fr_140px_150px] md:items-center">
+                  <div>
+                    <div className="font-bold text-slate-900">{item.productName}</div>
+                    <div className="mt-1 text-xs text-slate-500">{item.platform} • ${item.price}</div>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <input type="checkbox" checked={Boolean(item.isAdEnabled)} onChange={(event) => handleAdProductChange(item.id, "isAdEnabled", event.target.checked)} />
+                    إظهار في الإعلانات
+                  </label>
+                  <input type="number" min="1" value={item.adPriority ?? 1} onChange={(event) => handleAdProductChange(item.id, "adPriority", event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold outline-none transition focus:border-[#1475d1]" placeholder="ترتيب الظهور" />
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">

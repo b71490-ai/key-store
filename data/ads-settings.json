@@ -1,0 +1,10 @@
+{
+  "sectionTitle": "إعلانات وعروض من نفس المنتجات",
+  "badgeText": "عرض متحرك",
+  "autoRotateEnabled": true,
+  "autoRotateMs": 3800,
+  "pauseOnHover": false,
+  "maxAds": 4,
+  "showProgress": true,
+  "showThumbnails": true
+}

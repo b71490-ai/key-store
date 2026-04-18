@@ -150,6 +150,27 @@ function normalizeProductPrice(item, indexSeed = 0) {
 	return Number(parsed.toFixed(2));
 }
 
+function normalizeAdPriority(value, indexSeed = 0) {
+	const parsed = Number(value);
+	if (Number.isNaN(parsed) || parsed < 1) {
+		return indexSeed + 1;
+	}
+
+	return Math.min(Math.floor(parsed), 999);
+}
+
+function normalizeIsAdEnabled(value, indexSeed = 0) {
+	if (typeof value === "boolean") return value;
+	if (typeof value === "string") {
+		const lowered = value.toLowerCase();
+		if (lowered === "true" || lowered === "1") return true;
+		if (lowered === "false" || lowered === "0") return false;
+	}
+
+	// Preserve old behavior for existing stores by enabling the first 4 by default.
+	return indexSeed < 4;
+}
+
 const defaultKeysStore = [
 	{
 		id: 1,
@@ -334,6 +355,8 @@ const defaultKeysStore = [
 ].map((item) => ({
 	...item,
 	price: normalizeProductPrice(item, item.id),
+	isAdEnabled: normalizeIsAdEnabled(item.isAdEnabled, item.id - 1),
+	adPriority: normalizeAdPriority(item.adPriority, item.id - 1),
 	image: resolveSafeImage({
 		productName: item.productName,
 		platform: item.platform,
@@ -359,6 +382,8 @@ async function getKeysStore() {
 			keysStoreCache = parsed.map((item, index) => ({
 				...item,
 				price: normalizeProductPrice(item, index),
+				isAdEnabled: normalizeIsAdEnabled(item.isAdEnabled, index),
+				adPriority: normalizeAdPriority(item.adPriority, index),
 			}));
 
 			try {
@@ -421,6 +446,8 @@ export async function POST(request) {
 		delivery: body.delivery ?? "تسليم فوري",
 		guarantee: body.guarantee ?? "ضمان استبدال لمدة 7 أيام",
 		description: body.description ?? "منتج جديد تمت إضافته من لوحة الإدارة.",
+		isAdEnabled: normalizeIsAdEnabled(body?.isAdEnabled, keysStore.length),
+		adPriority: normalizeAdPriority(body?.adPriority, keysStore.length),
 		image: resolveSafeImage({
 			productName: body.productName,
 			platform: body.platform ?? "General",
@@ -509,6 +536,12 @@ export async function PUT(request) {
 		delivery: body?.delivery ?? current.delivery,
 		guarantee: body?.guarantee ?? current.guarantee,
 		description: body?.description ?? current.description,
+		isAdEnabled: body?.isAdEnabled !== undefined
+			? normalizeIsAdEnabled(body.isAdEnabled, productIndex)
+			: normalizeIsAdEnabled(current.isAdEnabled, productIndex),
+		adPriority: body?.adPriority !== undefined
+			? normalizeAdPriority(body.adPriority, productIndex)
+			: normalizeAdPriority(current.adPriority, productIndex),
 		image: resolveSafeImage({
 			productName: body?.productName ?? current.productName,
 			platform: body?.platform ?? current.platform,
