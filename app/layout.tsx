@@ -48,6 +48,9 @@ export const metadata: Metadata = {
     description: "Digital storefront for software keys and license management.",
     images: ["/opengraph-image.jpg"],
   },
+  verification: {
+    google: "XfTG-kolUfUSKO545Mxb3J9aefitXBsV_mc316ua9OU",
+  },
 };
 
 export default function RootLayout({
