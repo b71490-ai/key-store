@@ -1,0 +1,29 @@
+<svg width="1800" height="1100" viewBox="0 0 1800 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="1100" fill="url(#bg)"/>
+  <g filter="url(#blur)">
+    <path d="M1480 120C1160 20 860 130 650 340C470 520 490 810 760 890C1030 970 1370 830 1520 590C1670 350 1620 170 1480 120Z" fill="url(#wave1)"/>
+    <path d="M1370 230C1080 190 840 320 700 510C590 660 650 860 850 920C1060 980 1300 860 1440 690C1580 520 1630 270 1370 230Z" fill="url(#wave2)"/>
+    <path d="M1270 330C1060 310 890 390 780 520C690 630 740 790 900 840C1070 890 1230 790 1330 670C1430 550 1450 350 1270 330Z" fill="url(#wave3)"/>
+  </g>
+  <defs>
+    <linearGradient id="bg" x1="90" y1="100" x2="1700" y2="1030" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BADBFF"/>
+      <stop offset="1" stop-color="#EAF3FF"/>
+    </linearGradient>
+    <linearGradient id="wave1" x1="680" y1="190" x2="1600" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3BA8FF"/>
+      <stop offset="1" stop-color="#052DCC"/>
+    </linearGradient>
+    <linearGradient id="wave2" x1="710" y1="240" x2="1490" y2="840" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2E7EFF"/>
+      <stop offset="1" stop-color="#1A43D8"/>
+    </linearGradient>
+    <linearGradient id="wave3" x1="800" y1="320" x2="1370" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#57B9FF"/>
+      <stop offset="1" stop-color="#0D2CA8"/>
+    </linearGradient>
+    <filter id="blur" x="420" y="60" width="1250" height="930" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+</svg>

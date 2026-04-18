@@ -1,0 +1,19 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <circle cx="950" cy="140" r="220" fill="url(#orb)"/>
+  <path d="M130 620C220 420 360 290 520 270C670 250 760 350 840 460C910 560 990 640 1120 680V840H100L130 620Z" fill="url(#curve)"/>
+  <defs>
+    <linearGradient id="bg" x1="130" y1="90" x2="1040" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C4E5FF"/>
+      <stop offset="1" stop-color="#EFF6FF"/>
+    </linearGradient>
+    <linearGradient id="orb" x1="840" y1="-60" x2="1120" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#84CAFF"/>
+      <stop offset="1" stop-color="#2A5BEA"/>
+    </linearGradient>
+    <linearGradient id="curve" x1="150" y1="330" x2="1070" y2="790" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2D8BFF"/>
+      <stop offset="1" stop-color="#1531A8"/>
+    </linearGradient>
+  </defs>
+</svg>
