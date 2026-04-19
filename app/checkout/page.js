@@ -114,8 +114,8 @@ function CheckoutContent() {
 	const [cardHolderError, setCardHolderError] = useState("");
 	const [cardExpiryError, setCardExpiryError] = useState("");
 	const [cardCvcError, setCardCvcError] = useState("");
-	const [customerName, setCustomerName] = useState("Ammar Saleh");
-	const [customerEmail, setCustomerEmail] = useState("ammar@example.com");
+	const [customerName, setCustomerName] = useState("");
+	const [customerEmail, setCustomerEmail] = useState("");
 	const [couponCode, setCouponCode] = useState("");
 	const [lastOrderSummary, setLastOrderSummary] = useState(null);
 
@@ -488,7 +488,7 @@ function CheckoutContent() {
 											? "border-red-500 focus:border-red-500"
 											: "border-slate-200 focus:border-[#1475d1]"
 									}`}
-									placeholder="Ammar Saleh"
+									placeholder="الاسم الكامل"
 									value={cardHolder}
 									onChange={(event) => {
 										setCardHolder(event.target.value);
