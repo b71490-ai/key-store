@@ -368,6 +368,8 @@ function CheckoutContent() {
 				});
 			}
 		} catch (error) {
+			console.log(error);
+			console.log(error.response?.data);
 			const serverMessage =
 				error?.response?.data?.message ||
 				"حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى.";
