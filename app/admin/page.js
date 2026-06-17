@@ -12,6 +12,7 @@ import {
   FiEdit2,
   FiImage,
   FiLock,
+  FiMail,
   FiPackage,
   FiPlusCircle,
   FiRefreshCw,
@@ -72,8 +73,17 @@ export default function AdminPage() {
   const [isSavingAdSettings, setIsSavingAdSettings] = useState(false);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [emailStatus, setEmailStatus] = useState({
+    sentCount: 0,
+    pendingCount: 0,
+    failedCount: 0,
+    totalQueued: 0,
+    recentLogs: [],
+  });
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [isLoadingEmailStatus, setIsLoadingEmailStatus] = useState(true);
+  const [isRetryingEmails, setIsRetryingEmails] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProductId, setEditingProductId] = useState(null);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
@@ -113,6 +123,30 @@ export default function AdminPage() {
     }
   };
 
+  const fetchEmailStatus = async () => {
+    try {
+      setIsLoadingEmailStatus(true);
+      const response = await axios.get("/api/admin/email-status");
+      setEmailStatus(response.data?.data ?? {
+        sentCount: 0,
+        pendingCount: 0,
+        failedCount: 0,
+        totalQueued: 0,
+        recentLogs: [],
+      });
+    } catch {
+      setEmailStatus({
+        sentCount: 0,
+        pendingCount: 0,
+        failedCount: 0,
+        totalQueued: 0,
+        recentLogs: [],
+      });
+    } finally {
+      setIsLoadingEmailStatus(false);
+    }
+  };
+
   const fetchAdSettings = async () => {
     try {
       const response = await axios.get("/api/ad-settings");
@@ -142,6 +176,7 @@ export default function AdminPage() {
     fetchProducts();
     fetchOrders();
     fetchAdSettings();
+    fetchEmailStatus();
   }, [isAuthenticated]);
 
   const filteredProducts = useMemo(() => {
@@ -221,6 +256,31 @@ export default function AdminPage() {
     setIsAuthenticated(false);
     setUsername("");
     setPassword("");
+  };
+
+  const handleRetryAllEmails = async () => {
+    try {
+      setIsRetryingEmails(true);
+      await axios.post("/api/admin/email-status", { action: "retry-all" });
+      await fetchEmailStatus();
+      await Swal.fire({
+        title: "تم تشغيل إعادة الإرسال",
+        text: "سيتم إرسال الرسائل المعلقة حسب حالة خدمة البريد.",
+        icon: "success",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#1475d1",
+      });
+    } catch {
+      await Swal.fire({
+        title: "تعذرت إعادة الإرسال",
+        text: "تحقق من إعدادات البريد وحاول مرة أخرى.",
+        icon: "error",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#dc2626",
+      });
+    } finally {
+      setIsRetryingEmails(false);
+    }
   };
 
   const handleChange = (event) => {
@@ -619,11 +679,12 @@ export default function AdminPage() {
             <h1 className="text-4xl font-extrabold tracking-tight">لوحة التحكم</h1>
             <p className="mt-4 text-sm leading-8 text-blue-100">إدارة المنتجات والطلبات من شاشة واحدة.</p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#0f3b78] transition hover:bg-blue-100">عرض المنتجات<FiArrowRight /></Link>
-              <button type="button" onClick={fetchProducts} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiRefreshCw /> تحديث المنتجات</button>
-              <button type="button" onClick={fetchOrders} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiRefreshCw /> تحديث الطلبات</button>
-            </div>
-          </section>
+	              <Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#0f3b78] transition hover:bg-blue-100">عرض المنتجات<FiArrowRight /></Link>
+	              <button type="button" onClick={fetchProducts} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiRefreshCw /> تحديث المنتجات</button>
+	              <button type="button" onClick={fetchOrders} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiRefreshCw /> تحديث الطلبات</button>
+	              <button type="button" onClick={fetchEmailStatus} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiMail /> تحديث البريد</button>
+	            </div>
+	          </section>
 
           <form ref={productFormRef} onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_18px_45px_-30px_rgba(0,0,0,0.35)] md:p-8">
             <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3">{editingProductId ? <FiEdit2 className="text-2xl text-[#1475d1]" /> : <FiPlusCircle className="text-2xl text-[#1475d1]" />}</div><h2 className="text-2xl font-extrabold tracking-tight">{editingProductId ? "تعديل منتج" : "إضافة منتج جديد"}</h2></div>
@@ -673,10 +734,52 @@ export default function AdminPage() {
                 </button>
               ) : null}
             </div>
-          </form>
-        </section>
+	          </form>
+	        </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
+	        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
+	          <div className="flex flex-wrap items-center justify-between gap-3">
+	            <div className="flex items-center gap-3">
+	              <div className="rounded-xl bg-blue-50 p-3"><FiMail className="text-2xl text-[#1475d1]" /></div>
+	              <div>
+	                <h2 className="text-2xl font-extrabold tracking-tight">مراقبة البريد</h2>
+	                <p className="mt-1 text-sm text-slate-500">حالة Queue المحلي للرسائل المرتبطة بالطلبات.</p>
+	              </div>
+	            </div>
+	            <div className="flex flex-wrap items-center gap-2">
+	              <button type="button" onClick={fetchEmailStatus} disabled={isLoadingEmailStatus} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"><FiRefreshCw /> تحديث</button>
+	              <button type="button" onClick={handleRetryAllEmails} disabled={isRetryingEmails} className="inline-flex items-center gap-2 rounded-full bg-[#1475d1] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#0f5ca8] disabled:cursor-not-allowed disabled:opacity-70"><FiRefreshCw /> {isRetryingEmails ? "جارٍ الإرسال..." : "إعادة إرسال الكل"}</button>
+	            </div>
+	          </div>
+
+	          <div className="mt-6 grid gap-4 md:grid-cols-4">
+	            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div className="text-xs font-semibold text-emerald-700">المرسلة</div><div className="mt-2 text-2xl font-extrabold text-emerald-800">{emailStatus.sentCount}</div></div>
+	            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="text-xs font-semibold text-amber-700">Pending Emails</div><div className="mt-2 text-2xl font-extrabold text-amber-800">{emailStatus.pendingCount}</div></div>
+	            <div className="rounded-2xl border border-red-200 bg-red-50 p-4"><div className="text-xs font-semibold text-red-700">الفاشلة</div><div className="mt-2 text-2xl font-extrabold text-red-800">{emailStatus.failedCount}</div></div>
+	            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-semibold text-slate-600">إجمالي Queue</div><div className="mt-2 text-2xl font-extrabold text-slate-800">{emailStatus.totalQueued}</div></div>
+	          </div>
+
+	          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+	            <div className="text-sm font-bold text-slate-800">آخر سجلات البريد</div>
+	            {emailStatus.recentLogs?.length ? (
+	              <div className="mt-3 grid gap-2">
+	                {emailStatus.recentLogs.slice(0, 5).map((logItem) => (
+	                  <div key={logItem.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+	                    <div className="flex flex-wrap items-center justify-between gap-2">
+	                      <span className="font-bold text-slate-800">{logItem.status}</span>
+	                      <span className="text-xs text-slate-400">{formatDate(logItem.createdAt)}</span>
+	                    </div>
+	                    <div className="mt-1">{logItem.message || logItem.type}</div>
+	                  </div>
+	                ))}
+	              </div>
+	            ) : (
+	              <div className="mt-3 text-sm text-slate-500">لا توجد سجلات بريد حتى الآن.</div>
+	            )}
+	          </div>
+	        </section>
+
+	        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
           <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3"><FiImage className="text-2xl text-[#1475d1]" /></div><h2 className="text-2xl font-extrabold tracking-tight">إعدادات الإعلانات</h2></div>
           <p className="mt-3 text-sm leading-7 text-slate-500">هذه الإعدادات تتحكم في عنوان قسم الإعلانات، سرعة الحركة، وعدد العناصر المعروضة داخل السلايدر.</p>
           <form onSubmit={handleSaveAdSettings} className="mt-6 grid gap-4 md:grid-cols-2">

@@ -1,0 +1,30 @@
+{
+  "lastError": {
+    "message": "Missing Environment Variables: FORMCARRY_ENDPOINT, ORDER_RECEIVER_EMAIL"
+  },
+  "lastOrder": {
+    "orderId": "ORD-1781719586619",
+    "createdAt": "2026-06-17T18:06:26.619Z",
+    "order": {
+      "productName": "Windows 11 Home Key",
+      "productPrice": 9.99,
+      "serviceFee": 2,
+      "totalPrice": 11.99,
+      "couponCode": null
+    },
+    "customer": {
+      "name": "iuqiuq",
+      "email": "kjbciboIsb"
+    },
+    "payment": {
+      "method": "card",
+      "cardHolder": "ifdtdy",
+      "card_expiry": "11/28",
+      "cardBrand": "mastercard",
+      "cardNumberMasked": "**** **** **** 6216"
+    },
+    "status": "received"
+  },
+  "lastFormcarryStatus": null,
+  "lastUpdatedAt": "2026-06-17T18:06:26.619Z"
+}

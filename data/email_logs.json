@@ -1,0 +1,20 @@
+[
+  {
+    "id": "LOG-1781719586628-aea32c7a5bc9e",
+    "createdAt": "2026-06-17T18:06:26.628Z",
+    "type": "queued",
+    "status": "pending",
+    "orderId": "ORD-1781719586619",
+    "queueId": "QUEUE-1781719586625-4711bdb329e09",
+    "message": "Order added to local email queue."
+  },
+  {
+    "id": "LOG-1781719503248-d49f3ceee003a8",
+    "createdAt": "2026-06-17T18:05:03.248Z",
+    "type": "queued",
+    "status": "pending",
+    "orderId": "ORD-1781719503246",
+    "queueId": "QUEUE-1781719503247-4a1a3e60bcd0e8",
+    "message": "Order added to local email queue."
+  }
+]

