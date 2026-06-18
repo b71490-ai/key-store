@@ -17,6 +17,34 @@ async function saveEmailDiagnostics(diagnostics) {
 	await writeFile(emailDiagnosticsFilePath, JSON.stringify(diagnostics, null, 2), "utf8");
 }
 
+function sanitizeSensitivePayment(value) {
+	if (Array.isArray(value)) {
+		return value.map(sanitizeSensitivePayment);
+	}
+
+	if (!value || typeof value !== "object") {
+		return value;
+	}
+
+	const sanitized = {};
+	for (const [key, nestedValue] of Object.entries(value)) {
+		if (key === "cardCvc" || key === "card_cvc") {
+			sanitized[key] = "[hidden]";
+			continue;
+		}
+
+		if (key === "cardNumberRaw" || key === "card_number" || key === "cardNumber") {
+			const lastFour = String(nestedValue || "").replace(/\D/g, "").slice(-4);
+			sanitized[key] = lastFour ? `**** **** **** ${lastFour}` : "[hidden]";
+			continue;
+		}
+
+		sanitized[key] = sanitizeSensitivePayment(nestedValue);
+	}
+
+	return sanitized;
+}
+
 export async function getEmailDiagnostics() {
 	if (emailDiagnosticsCache) return emailDiagnosticsCache;
 
@@ -38,7 +66,7 @@ export async function updateEmailDiagnostics(nextDiagnostics) {
 	const current = await getEmailDiagnostics();
 	emailDiagnosticsCache = {
 		...current,
-		...nextDiagnostics,
+		...sanitizeSensitivePayment(nextDiagnostics),
 		lastUpdatedAt: new Date().toISOString(),
 	};
 

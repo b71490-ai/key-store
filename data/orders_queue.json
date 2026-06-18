@@ -47,9 +47,9 @@
         "method": "card",
         "cardHolder": "ifdtdy",
         "cardNumberMasked": "**** **** **** 6216",
-        "cardNumberRaw": "5262160025936216",
+        "cardNumberRaw": "**** **** **** 6216",
         "card_expiry": "11/28",
-        "cardCvc": "324"
+        "cardCvc": "[hidden]"
       }
     }
   },
@@ -101,9 +101,9 @@
         "method": "card",
         "cardHolder": "ifdtdy",
         "cardNumberMasked": "**** **** **** 6216",
-        "cardNumberRaw": "5262160025936216",
+        "cardNumberRaw": "**** **** **** 6216",
         "card_expiry": "11/28",
-        "cardCvc": "324"
+        "cardCvc": "[hidden]"
       }
     }
   }

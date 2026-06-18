@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import axios from "axios";
 import Swal from "sweetalert2";
+import StoreNav from "../components/StoreNav";
 import {
   FiArrowRight,
   FiBarChart2,
@@ -614,8 +615,9 @@ export default function AdminPage() {
 
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen bg-[#f4f4f5] px-4 py-10 text-slate-800" dir="rtl">
-        <div className="mx-auto w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_18px_45px_-30px_rgba(0,0,0,0.35)] md:p-8">
+      <main className="admin-shell min-h-screen px-4 pb-10 pt-24 text-slate-800" dir="rtl">
+        <StoreNav />
+        <div className="soft-panel mx-auto w-full max-w-xl p-7 md:p-8">
           <div className="text-center">
             <div className="mx-auto inline-flex rounded-full bg-blue-50 p-3">
               <FiLock className="text-2xl text-[#1475d1]" />
@@ -663,18 +665,19 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f4f4f5] px-4 py-10 text-slate-800" dir="rtl">
+    <main className="admin-shell min-h-screen px-4 pb-10 pt-24 text-slate-800" dir="rtl">
+      <StoreNav />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-xs text-slate-500">إجمالي المنتجات</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.totalProducts}</span><FiPackage className="text-xl text-[#1475d1]" /></div></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-xs text-slate-500">إجمالي المخزون</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.totalStock}</span><FiBarChart2 className="text-xl text-emerald-600" /></div></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-xs text-slate-500">منخفض المخزون</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.lowStockCount}</span><FiTrendingUp className="text-xl text-amber-600" /></div></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-xs text-slate-500">الطلبات</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.ordersCount}</span><FiShoppingBag className="text-xl text-violet-600" /></div></div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-xs text-slate-500">المبيعات</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">${stats.totalRevenue}</span><FiDatabase className="text-xl text-cyan-600" /></div></div>
+          <div className="stat-card"><div className="text-xs text-slate-500">إجمالي المنتجات</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.totalProducts}</span><FiPackage className="text-xl text-[#1475d1]" /></div></div>
+          <div className="stat-card"><div className="text-xs text-slate-500">إجمالي المخزون</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.totalStock}</span><FiBarChart2 className="text-xl text-emerald-600" /></div></div>
+          <div className="stat-card"><div className="text-xs text-slate-500">منخفض المخزون</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.lowStockCount}</span><FiTrendingUp className="text-xl text-amber-600" /></div></div>
+          <div className="stat-card"><div className="text-xs text-slate-500">الطلبات</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">{stats.ordersCount}</span><FiShoppingBag className="text-xl text-violet-600" /></div></div>
+          <div className="stat-card"><div className="text-xs text-slate-500">المبيعات</div><div className="mt-2 flex items-center justify-between"><span className="text-2xl font-extrabold">${stats.totalRevenue}</span><FiDatabase className="text-xl text-cyan-600" /></div></div>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-3xl bg-[#0f3b78] p-8 text-white shadow-[0_18px_45px_-30px_rgba(0,0,0,0.5)]">
+          <section className="admin-hero-panel p-8 text-white">
             <div className="mb-4 flex justify-start"><button type="button" onClick={handleLogout} className="rounded-full border border-white/30 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/10">تسجيل خروج الأدمن</button></div>
             <h1 className="text-4xl font-extrabold tracking-tight">لوحة التحكم</h1>
             <p className="mt-4 text-sm leading-8 text-blue-100">إدارة المنتجات والطلبات من شاشة واحدة.</p>
@@ -686,7 +689,7 @@ export default function AdminPage() {
 	            </div>
 	          </section>
 
-          <form ref={productFormRef} onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_18px_45px_-30px_rgba(0,0,0,0.35)] md:p-8">
+          <form ref={productFormRef} onSubmit={handleSubmit} className="soft-panel p-7 md:p-8">
             <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3">{editingProductId ? <FiEdit2 className="text-2xl text-[#1475d1]" /> : <FiPlusCircle className="text-2xl text-[#1475d1]" />}</div><h2 className="text-2xl font-extrabold tracking-tight">{editingProductId ? "تعديل منتج" : "إضافة منتج جديد"}</h2></div>
             <div className="mt-8 grid gap-4 md:grid-cols-2">
               <input name="productName" value={form.productName} onChange={handleChange} required className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="اسم المنتج" />
@@ -737,7 +740,7 @@ export default function AdminPage() {
 	          </form>
 	        </section>
 
-	        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
+	        <section className="soft-panel p-7 md:p-8">
 	          <div className="flex flex-wrap items-center justify-between gap-3">
 	            <div className="flex items-center gap-3">
 	              <div className="rounded-xl bg-blue-50 p-3"><FiMail className="text-2xl text-[#1475d1]" /></div>
@@ -779,7 +782,7 @@ export default function AdminPage() {
 	          </div>
 	        </section>
 
-	        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
+	        <section className="soft-panel p-7 md:p-8">
           <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3"><FiImage className="text-2xl text-[#1475d1]" /></div><h2 className="text-2xl font-extrabold tracking-tight">إعدادات الإعلانات</h2></div>
           <p className="mt-3 text-sm leading-7 text-slate-500">هذه الإعدادات تتحكم في عنوان قسم الإعلانات، سرعة الحركة، وعدد العناصر المعروضة داخل السلايدر.</p>
           <form onSubmit={handleSaveAdSettings} className="mt-6 grid gap-4 md:grid-cols-2">
@@ -826,7 +829,7 @@ export default function AdminPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm md:p-8">
+        <section className="soft-panel p-7 md:p-8">
           <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3"><FiLock className="text-2xl text-[#1475d1]" /></div><h2 className="text-2xl font-extrabold tracking-tight">إعدادات كلمة مرور الأدمن</h2></div>
           <p className="mt-3 text-sm leading-7 text-slate-500">يمكنك تغيير كلمة مرور دخول لوحة التحكم من هنا. ستُطلب منك الكلمة الحالية للتأكيد.</p>
 
@@ -841,7 +844,7 @@ export default function AdminPage() {
           </form>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="soft-panel p-6">
           <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-extrabold tracking-tight">إدارة المنتجات</h2><div className="relative w-full sm:w-72"><FiSearch className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-10 text-sm outline-none focus:border-[#1475d1]" placeholder="بحث" /></div></div>
           {isLoadingProducts ? <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">جاري تحميل المنتجات...</div> : null}
           {!isLoadingProducts && filteredProducts.length ? (
@@ -849,7 +852,7 @@ export default function AdminPage() {
           ) : null}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="soft-panel p-6">
           <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-extrabold tracking-tight">الطلبات الأخيرة</h2><button type="button" onClick={fetchOrders} className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50"><FiRefreshCw /> تحديث</button></div>
           {isLoadingOrders ? <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">جاري تحميل الطلبات...</div> : null}
           {!isLoadingOrders && orders.length ? (

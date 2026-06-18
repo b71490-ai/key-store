@@ -19,16 +19,28 @@ const cairo = Cairo({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://key-store-gamma.vercel.app"),
-  title: "Key Store",
-  description: "Digital storefront for software keys and license management.",
+  title: {
+    default: "Key Store | متجر مفاتيح رقمية Premium",
+    template: "%s | Key Store",
+  },
+  description: "متجر عربي Premium لشراء مفاتيح Windows و Microsoft و Adobe والألعاب مع تجربة دفع واضحة وسريعة.",
+  keywords: ["مفاتيح رقمية", "Windows keys", "Microsoft Office", "Adobe", "Steam", "Key Store"],
+  applicationName: "Key Store",
+  authors: [{ name: "Key Store" }],
+  creator: "Key Store",
+  publisher: "Key Store",
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: "/icon.jpg",
     apple: "/apple-icon.jpg",
     shortcut: "/icon.jpg",
   },
   openGraph: {
-    title: "Key Store",
-    description: "Digital storefront for software keys and license management.",
+    title: "Key Store | متجر مفاتيح رقمية Premium",
+    description: "منتجات رقمية بتصميم SaaS احترافي وتجربة شراء عربية واضحة.",
     url: "https://key-store-gamma.vercel.app",
     siteName: "Key Store",
     images: [
@@ -39,13 +51,13 @@ export const metadata: Metadata = {
         alt: "Key Store Microsoft-style preview",
       },
     ],
-    locale: "en_US",
+    locale: "ar",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Key Store",
-    description: "Digital storefront for software keys and license management.",
+    title: "Key Store | متجر مفاتيح رقمية Premium",
+    description: "مفاتيح برامج وألعاب بتجربة Premium وواجهة عربية RTL.",
     images: ["/opengraph-image.jpg"],
   },
   verification: {
@@ -60,7 +72,8 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ar"
+      dir="rtl"
       className={`${geistSans.variable} ${geistMono.variable} ${cairo.variable} h-full antialiased`}
     >
       <head>

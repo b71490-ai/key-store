@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Swal from "sweetalert2";
+import StoreNav from "../components/StoreNav";
 import {
 	FiArrowRight,
 	FiKey,
@@ -225,14 +226,13 @@ export default function ProductsPage() {
 	const activeAd = adProducts[activeAdIndex] || adProducts[0] || null;
 
 	return (
-		<main className="catalog-shell min-h-screen pb-16 text-slate-800" dir="rtl">
-			<div className="catalog-bg-orb catalog-bg-orb-one" aria-hidden="true" />
-			<div className="catalog-bg-orb catalog-bg-orb-two" aria-hidden="true" />
-			<div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pt-8">
-				<section className="catalog-hero overflow-hidden rounded-3xl border border-slate-200 shadow-[0_28px_80px_-40px_rgba(15,23,42,0.6)]">
+		<main className="catalog-shell store-shell min-h-screen pb-16 text-slate-800" dir="rtl">
+			<StoreNav />
+			<div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pt-24">
+				<section className="catalog-hero overflow-hidden rounded-[28px] border border-white/70 shadow-[0_28px_80px_-45px_rgba(15,23,42,0.55)]">
 					<div className="grid gap-8 p-6 md:grid-cols-[1.3fr_0.7fr] md:p-8">
 						<div>
-							<div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-semibold text-[#0f5ca8]">
+							<div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-sm font-extrabold text-[#0f5ca8] shadow-sm">
 								<FiTag />
 								كتالوج احترافي
 							</div>
@@ -262,17 +262,13 @@ export default function ProductsPage() {
 							</div>
 
 							<div className="mt-7 flex flex-wrap items-center gap-3">
-								<button
-									type="button"
-									onClick={fetchItems}
-									className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-								>
+								<button type="button" onClick={fetchItems} className="secondary-action">
 									<FiRefreshCw />
 									تحديث المنتجات
 								</button>
 								<Link
 									href="/checkout"
-									className="inline-flex items-center gap-2 rounded-full bg-[#1475d1] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0f5ca8]"
+									className="primary-action"
 								>
 									<FiShoppingCart />
 									الانتقال للدفع
@@ -280,7 +276,7 @@ export default function ProductsPage() {
 							</div>
 						</div>
 
-						<div className="catalog-hero-side rounded-2xl border border-white/60 bg-white/70 p-4 backdrop-blur">
+						<div className="catalog-hero-side rounded-2xl border border-white/70 bg-white/74 p-4 shadow-sm backdrop-blur">
 							<div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#0f172a] px-3 py-1 text-xs font-bold text-white">
 								<FiTrendingUp />
 								الأكثر طلبًا
@@ -300,14 +296,14 @@ export default function ProductsPage() {
 					</div>
 				</section>
 
-				<section className="filter-bar rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-[0_14px_40px_-30px_rgba(15,23,42,0.45)] backdrop-blur">
+				<section className="filter-bar rounded-2xl border border-white/70 bg-white/88 p-4 shadow-[0_14px_40px_-30px_rgba(15,23,42,0.45)] backdrop-blur">
 					<div className="grid gap-3 md:grid-cols-[1.2fr_0.9fr_0.9fr]">
 						<input
 							type="text"
 							value={searchQuery}
 							onChange={(event) => setSearchQuery(event.target.value)}
 							placeholder="ابحث باسم المنتج أو المنصة"
-							className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#1475d1]"
+									className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#1475d1]"
 						/>
 
 						<select
@@ -336,7 +332,7 @@ export default function ProductsPage() {
 
 				{!loading && adProducts.length ? (
 					<section
-						className="promo-rail rounded-3xl border border-slate-200 p-5 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.4)]"
+						className="promo-rail rounded-[28px] border border-white/70 p-5 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.4)]"
 						onMouseEnter={() => {
 							if (adSettings.pauseOnHover) setIsAdPaused(true);
 						}}
@@ -454,13 +450,22 @@ export default function ProductsPage() {
 				) : null}
 
 				{loading ? (
-					<div className="rounded-3xl border border-slate-200 bg-white p-6 text-slate-500 shadow-sm">
-						جاري تحميل المنتجات...
-					</div>
+					<section className="products-grid">
+						{Array.from({ length: 6 }).map((_, index) => (
+							<div key={index} className="premium-card skeleton-card">
+								<div className="skeleton-block aspect-[16/10]" />
+								<div className="mt-4 space-y-3">
+									<div className="skeleton-line w-2/3" />
+									<div className="skeleton-line w-full" />
+									<div className="skeleton-line w-1/2" />
+								</div>
+							</div>
+						))}
+					</section>
 				) : null}
 
 				{error ? (
-					<div className="rounded-3xl border border-red-300 bg-red-50 p-6 text-red-700">
+					<div className="rounded-2xl border border-red-200 bg-red-50 p-6 font-semibold text-red-700">
 						{error}
 					</div>
 				) : null}
@@ -516,6 +521,14 @@ export default function ProductsPage() {
 										</div>
 
 										<Link
+											href={`/products/${item.id}`}
+											className="secondary-action w-full text-sm"
+										>
+											عرض التفاصيل
+											<FiArrowRight />
+										</Link>
+
+										<Link
 											href={{
 												pathname: "/checkout",
 												query: {
@@ -537,7 +550,7 @@ export default function ProductsPage() {
 				) : null}
 
 				{!loading && !filteredItems.length ? (
-					<div className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
+					<div className="rounded-2xl border border-dashed border-slate-300 bg-white/88 p-8 text-center text-slate-500 shadow-sm">
 						لا توجد نتائج مطابقة الآن. غيّر البحث أو الفلاتر وجرب مرة ثانية.
 					</div>
 				) : null}

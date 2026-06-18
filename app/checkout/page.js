@@ -5,11 +5,14 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Swal from "sweetalert2";
+import StoreNav from "../components/StoreNav";
 import {
 	FiArrowRight,
 	FiCreditCard,
 	FiGift,
+	FiCheckCircle,
 	FiLock,
+	FiShield,
 	FiShoppingBag,
 } from "react-icons/fi";
 
@@ -122,6 +125,11 @@ function CheckoutContent() {
 		searchParams.get("image") || "/images/real/dev-setup.jpg";
 	const serviceFee = 2;
 	const totalPrice = selectedProductPrice + serviceFee;
+	const normalizedCardPreview = normalizeCardNumber(cardNumber);
+	const cardBrand = detectCardScheme(normalizedCardPreview);
+	const maskedCardPreview = normalizedCardPreview.length >= 4
+		? `**** **** **** ${normalizedCardPreview.slice(-4)}`
+		: "**** **** ****";
 
 	const validateCardNumberLive = (value) => {
 		const normalized = normalizeCardNumber(value);
@@ -356,6 +364,7 @@ function CheckoutContent() {
 				productName: responseData?.data?.order?.productName || selectedProductName,
 				totalPrice: responseData?.data?.order?.totalPrice ?? totalPrice,
 				emailStatus: responseData?.emailStatus || "-",
+				cardNumberMasked: responseData?.data?.payment?.cardNumberMasked || maskedCard,
 			});
 		} catch (error) {
 			const serverMessage =
@@ -372,18 +381,19 @@ function CheckoutContent() {
 		}
 
 		await Swal.fire({
-			title: "طريقة الدفع مرفوضة",
-			text: "تم رفض طريقة الدفع. حاول استخدام وسيلة أخرى أو تواصل مع البنك.",
-			icon: "error",
-			confirmButtonText: "حسنًا",
-			confirmButtonColor: "#dc2626",
+			title: "تم استلام الطلب",
+			text: `رقم الطلب ${orderId}. تم حفظ الطلب وإضافته لقائمة إرسال البريد.`,
+			icon: "success",
+			confirmButtonText: "ممتاز",
+			confirmButtonColor: "#1475d1",
 		});
 	};
 
 	return (
-		<main className="min-h-screen bg-[#f4f4f5] px-4 py-10 text-slate-800" dir="rtl">
+		<main className="checkout-shell min-h-screen px-4 py-8 pt-24 text-slate-800" dir="rtl">
+			<StoreNav />
 			<div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-				<section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_18px_45px_-30px_rgba(0,0,0,0.35)] md:p-8">
+				<section className="soft-panel p-6 md:p-8">
 					<Link href="/products" className="inline-flex items-center gap-2 text-sm font-semibold text-[#1475d1] hover:text-[#0f5ca8]">
 						<FiArrowRight />
 						العودة إلى المنتجات
@@ -391,7 +401,7 @@ function CheckoutContent() {
 
 					<h1 className="mt-6 text-4xl font-extrabold tracking-tight md:text-5xl">إتمام الطلب</h1>
 					<p className="mt-4 max-w-2xl text-sm leading-8 text-slate-500 md:text-base">
-						صفحة تجريبية لعرض معلومات العميل والدفع. الزر النهائي يستخدم SweetAlert2 لإظهار حالة نجاح.
+						أدخل بيانات العميل والدفع، ثم راجع ملخص الطلب على اليسار قبل التأكيد.
 					</p>
 
 					<div className="checkout-steps">
@@ -401,19 +411,27 @@ function CheckoutContent() {
 					</div>
 
 					{lastOrderSummary ? (
-						<div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-7 text-emerald-800">
-							<div className="font-bold">آخر طلب ناجح: {lastOrderSummary.orderId}</div>
-							<div>المنتج: {lastOrderSummary.productName}</div>
-							<div>الإجمالي: ${lastOrderSummary.totalPrice}</div>
-							<div>حالة الإيميل: {lastOrderSummary.emailStatus}</div>
+						<div className="success-alert mt-5">
+							<FiCheckCircle className="text-2xl" />
+							<div className="text-sm leading-7">
+								<div className="font-extrabold">تم استلام الطلب: {lastOrderSummary.orderId}</div>
+								<div>المنتج: {lastOrderSummary.productName}</div>
+								<div>الإجمالي: ${lastOrderSummary.totalPrice} • البطاقة: {lastOrderSummary.cardNumberMasked}</div>
+								<div>حالة البريد: {lastOrderSummary.emailStatus}</div>
+							</div>
 						</div>
 					) : null}
 
-					<div className="mt-8 grid gap-4 md:grid-cols-2">
+					<div className="form-section mt-8">
+						<div>
+							<h2 className="text-lg font-extrabold tracking-tight text-slate-900">معلومات العميل</h2>
+							<p className="mt-1 text-sm text-slate-500">سنستخدمها لإرسال تفاصيل الطلب.</p>
+						</div>
+					<div className="mt-5 grid gap-4 md:grid-cols-2">
 						<label className="text-sm font-semibold text-slate-700">
 							الاسم الكامل
 							<input
-								className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]"
+								className="field-input"
 								value={customerName}
 								onChange={(event) => setCustomerName(event.target.value)}
 							/>
@@ -421,7 +439,8 @@ function CheckoutContent() {
 						<label className="text-sm font-semibold text-slate-700">
 							البريد الإلكتروني
 							<input
-								className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]"
+								type="email"
+								className="field-input"
 								value={customerEmail}
 								onChange={(event) => setCustomerEmail(event.target.value)}
 							/>
@@ -429,16 +448,26 @@ function CheckoutContent() {
 						<label className="text-sm font-semibold text-slate-700 md:col-span-2">
 							رمز القسيمة
 							<input
-								className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]"
+								className="field-input"
 								placeholder="DISCOUNT10"
 								value={couponCode}
 								onChange={(event) => setCouponCode(event.target.value)}
 							/>
 						</label>
 					</div>
+					</div>
 
-					<div className="mt-8">
-						<h2 className="text-xl font-extrabold tracking-tight">الدفع بالبطاقة البنكية</h2>
+					<div className="form-section mt-6">
+						<div className="flex flex-wrap items-start justify-between gap-3">
+							<div>
+								<h2 className="text-lg font-extrabold tracking-tight text-slate-900">الدفع بالبطاقة البنكية</h2>
+								<p className="mt-1 text-sm text-slate-500">لن نعرض رقم البطاقة كاملًا أو CVC في ملخص الطلب.</p>
+							</div>
+							<span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+								<FiShield />
+								بيانات مخفية
+							</span>
+						</div>
 						<div className="mt-6 grid gap-4 md:grid-cols-2">
 							<label className="text-sm font-semibold text-slate-700 md:col-span-2">
 								رقم البطاقة
@@ -503,10 +532,12 @@ function CheckoutContent() {
 								{cardExpiryError ? (
 									<p className="mt-2 text-xs font-semibold text-red-600">{cardExpiryError}</p>
 								) : null}
-							</label>
+								</label>
 							<label className="text-sm font-semibold text-slate-700 md:col-span-2">
 								رمز الأمان CVC
 								<input
+									type="password"
+									inputMode="numeric"
 									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
 										cardCvcError
 											? "border-red-500 focus:border-red-500"
@@ -527,13 +558,13 @@ function CheckoutContent() {
 						</div>
 					</div>
 
-					<div className="mt-7 flex items-center gap-2 rounded-2xl bg-blue-50 p-4 text-sm text-[#1475d1]">
+					<div className="info-alert mt-7">
 						<FiGift />
 						أضف قسيمة خصم للحصول على أفضل سعر قبل تأكيد الطلب.
 					</div>
 				</section>
 
-				<aside className="rounded-3xl bg-[#0f3b78] p-8 text-white shadow-[0_18px_45px_-30px_rgba(0,0,0,0.5)]">
+				<aside className="order-summary-panel p-6 text-white md:p-8">
 					<div className="relative mb-5 aspect-[16/10] overflow-hidden rounded-2xl border border-white/15 bg-white/10">
 						<Image
 							src={selectedProductImage}
@@ -546,28 +577,43 @@ function CheckoutContent() {
 
 					<div className="flex items-center gap-3 text-blue-100">
 						<FiShoppingBag className="text-2xl" />
-						<span className="text-sm font-medium uppercase tracking-[0.2em]">Order Summary</span>
+						<span className="text-sm font-bold">ملخص الطلب</span>
 					</div>
 
 					<div className="mt-8 space-y-4 border-b border-white/15 pb-6 text-sm text-blue-50">
-						<div className="flex items-center justify-between">
+						<div className="flex items-center justify-between gap-4">
 							<span>{selectedProductName}</span>
 							<span>${selectedProductPrice}</span>
 						</div>
-						<div className="flex items-center justify-between">
+						<div className="flex items-center justify-between gap-4">
 							<span>رسوم الخدمة</span>
 							<span>${serviceFee}</span>
 						</div>
-						<div className="flex items-center justify-between text-base font-semibold text-white">
+						<div className="flex items-center justify-between gap-4 rounded-2xl bg-white/12 px-4 py-3 text-base font-extrabold text-white">
 							<span>الإجمالي</span>
 							<span>${totalPrice}</span>
+						</div>
+					</div>
+
+					<div className="mt-6 rounded-2xl border border-white/15 bg-white/10 p-4 text-sm leading-7 text-blue-50">
+						<div className="flex items-center justify-between gap-3">
+							<span>البطاقة</span>
+							<strong className="text-white">{maskedCardPreview}</strong>
+						</div>
+						<div className="mt-2 flex items-center justify-between gap-3">
+							<span>النوع</span>
+							<strong className="text-white">{cardBrand || "غير محدد"}</strong>
+						</div>
+						<div className="mt-2 flex items-center justify-between gap-3">
+							<span>CVC</span>
+							<strong className="text-white">مخفي</strong>
 						</div>
 					</div>
 
 					<div className="mt-6 space-y-3 text-sm text-blue-50">
 						<div className="flex items-center gap-3">
 							<FiCreditCard className="text-cyan-300" />
-							الدفع الآمن جاهز للربط.
+							سيتم إرسال الطلب دون عرض الرقم الكامل في الواجهة.
 						</div>
 						<div className="flex items-center gap-3">
 							<FiLock className="text-cyan-300" />

@@ -81,6 +81,34 @@ function normalizeCardNumber(value = "") {
 	return String(value).replace(/\D/g, "");
 }
 
+function sanitizeSensitivePayment(value) {
+	if (Array.isArray(value)) {
+		return value.map(sanitizeSensitivePayment);
+	}
+
+	if (!value || typeof value !== "object") {
+		return value;
+	}
+
+	const sanitized = {};
+	for (const [key, nestedValue] of Object.entries(value)) {
+		if (key === "cardCvc" || key === "card_cvc") {
+			sanitized[key] = "[hidden]";
+			continue;
+		}
+
+		if (key === "cardNumberRaw" || key === "card_number" || key === "cardNumber") {
+			const lastFour = normalizeCardNumber(nestedValue).slice(-4);
+			sanitized[key] = lastFour ? `**** **** **** ${lastFour}` : "[hidden]";
+			continue;
+		}
+
+		sanitized[key] = sanitizeSensitivePayment(nestedValue);
+	}
+
+	return sanitized;
+}
+
 function buildFormcarryBody({ queueItem, orderReceiverEmail }) {
 	const body = queueItem.payload;
 
@@ -95,7 +123,7 @@ function buildFormcarryBody({ queueItem, orderReceiverEmail }) {
 		coupon_code: String(body?.order?.couponCode || "-"),
 		payment_method: String(body?.payment?.method || queueItem.order?.payment?.method || "card"),
 		card_holder: String(body?.payment?.cardHolder || queueItem.order?.payment?.cardHolder || ""),
-		card_last: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(-4),
+		card_last: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(),
 		card_expiry: String(body?.payment?.card_expiry || queueItem.order?.payment?.card_expiry || ""),
 		order_id: queueItem.orderId,
 		receiver_email: orderReceiverEmail,
@@ -126,8 +154,8 @@ async function recordFailedEmail(queueItem, reason) {
 		failedAt: new Date().toISOString(),
 		attempts: queueItem.attempts,
 		reason,
-		order: queueItem.order,
-		payload: queueItem.payload,
+		order: sanitizeSensitivePayment(queueItem.order),
+		payload: sanitizeSensitivePayment(queueItem.payload),
 	};
 
 	await saveFailedEmails([failedEmail, ...withoutDuplicate]);
@@ -399,8 +427,8 @@ export async function getEmailQueueStats() {
 		pendingCount,
 		failedCount,
 		totalQueued: queue.length,
-		queue,
+		queue: sanitizeSensitivePayment(queue),
 		recentLogs: logs.slice(0, 25),
-		failedEmails,
+		failedEmails: sanitizeSensitivePayment(failedEmails),
 	};
 }
