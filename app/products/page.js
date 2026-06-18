@@ -189,6 +189,7 @@ export default function ProductsPage() {
 
 	const adProducts = (configuredAds.length ? configuredAds : [...items].sort((a, b) => getSoldCount(b) - getSoldCount(a))).slice(0, adSettings.maxAds);
 	const activeAd = adProducts[activeAdIndex] || adProducts[0] || null;
+	const featuredHeroProduct = activeAd || filteredItems[0] || items[0] || null;
 	const soldProducts = items.reduce((sum, item) => sum + getSoldCount(item), 0);
 	const liveOrders = 2400 + items.length * 19;
 
@@ -212,7 +213,7 @@ export default function ProductsPage() {
 	return (
 		<main className="stable-products-shell min-h-screen pb-12 text-slate-900" dir="rtl">
 			<StoreNav />
-			<div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-6">
+			<div className="stable-products-container mx-auto w-full px-4 py-4 md:px-6">
 				<section className="stable-offer-bar">
 					<strong><FiZap /> عروض اليوم</strong>
 					<div className="stable-offer-track">
@@ -253,21 +254,46 @@ export default function ProductsPage() {
 						</div>
 					</div>
 
-					<div className="stable-hero-stats">
-						<div className="stable-stat-card is-featured">
-							<span>طلبات مباشرة</span>
-							<strong>{liveOrders.toLocaleString("en-US")}</strong>
-							<small>نشاط شراء مستمر خلال اليوم</small>
-						</div>
-						<div className="stable-stat-card">
-							<span>منتجات مباعة</span>
-							<strong>{soldProducts.toLocaleString("en-US")}</strong>
-							<small>مفاتيح رقمية تم تسليمها</small>
-						</div>
-						<div className="stable-stat-card">
-							<span>رضا العملاء</span>
-							<strong>98.7%</strong>
-							<small>تقييمات موثوقة بعد الشراء</small>
+					<div className="stable-hero-showcase">
+						{featuredHeroProduct ? (
+							<div className="stable-showcase-card">
+								<div className="stable-showcase-image">
+									<Image
+										src={getAdImageSource(featuredHeroProduct)}
+										alt={featuredHeroProduct.productName}
+										fill
+										sizes="(max-width: 768px) 90vw, 520px"
+										className="stable-showcase-img"
+										priority
+									/>
+								</div>
+								<div className="stable-showcase-info">
+									<span>الأكثر طلبًا الآن</span>
+									<h2>{featuredHeroProduct.productName}</h2>
+									<div>
+										<strong>{formatPrice(featuredHeroProduct.price)}</strong>
+										<small><FiStar /> {getRating(featuredHeroProduct)}</small>
+									</div>
+								</div>
+							</div>
+						) : null}
+
+						<div className="stable-hero-stats">
+							<div className="stable-stat-card is-featured">
+								<span>طلبات مباشرة</span>
+								<strong>{liveOrders.toLocaleString("en-US")}</strong>
+								<small>نشاط شراء مستمر خلال اليوم</small>
+							</div>
+							<div className="stable-stat-card">
+								<span>منتجات مباعة</span>
+								<strong>{soldProducts.toLocaleString("en-US")}</strong>
+								<small>مفاتيح رقمية تم تسليمها</small>
+							</div>
+							<div className="stable-stat-card">
+								<span>رضا العملاء</span>
+								<strong>98.7%</strong>
+								<small>تقييمات موثوقة بعد الشراء</small>
+							</div>
 						</div>
 					</div>
 				</section>
@@ -288,8 +314,8 @@ export default function ProductsPage() {
 								src={getAdImageSource(activeAd)}
 								alt={activeAd.productName}
 								fill
-								priority
-								sizes="(max-width: 768px) 100vw, 540px"
+								loading="lazy"
+								sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
 								className="stable-slider-img"
 							/>
 						</div>
@@ -330,6 +356,21 @@ export default function ProductsPage() {
 									/>
 								))}
 							</div>
+							{adProducts.length > 1 ? (
+								<div className="stable-offer-thumbnails">
+									{adProducts.map((item, index) => (
+										<button
+											type="button"
+											key={`thumb-${item.id}`}
+											onClick={() => setActiveAdIndex(index)}
+											className={index === activeAdIndex ? "is-active" : ""}
+										>
+											<span>{item.platform}</span>
+											<strong>{formatPrice(item.price)}</strong>
+										</button>
+									))}
+								</div>
+							) : null}
 						</div>
 					</section>
 				) : null}
@@ -396,9 +437,8 @@ export default function ProductsPage() {
 												src={image}
 												alt={item.productName}
 												fill
-												sizes="(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 33vw"
-												priority={index < 2}
-												loading={index < 2 ? "eager" : "lazy"}
+												sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+												loading="lazy"
 												className="stable-product-image"
 											/>
 											<div className="stable-product-badges">
@@ -419,6 +459,7 @@ export default function ProductsPage() {
 											<div className="stable-product-meta">
 												<span><FiCheckCircle /> {getSoldCount(item)} عملية بيع</span>
 												<span><FiClock /> {item.delivery}</span>
+												<span><FiShield /> {item.guarantee || "ضمان استبدال"}</span>
 											</div>
 											<div className="stable-price-row">
 												<div>

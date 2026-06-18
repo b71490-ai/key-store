@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 const cairo = Cairo({
   variable: "--font-cairo",
   subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -76,13 +78,6 @@ export default function RootLayout({
       dir="rtl"
       className={`${geistSans.variable} ${geistMono.variable} ${cairo.variable} h-full antialiased`}
     >
-      <head>
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

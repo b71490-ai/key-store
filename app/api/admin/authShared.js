@@ -5,6 +5,17 @@ export const SESSION_COOKIE = "key_store_admin_session";
 export const SESSION_MAX_AGE_SECONDS = 6 * 60 * 60;
 
 const loginAttempts = new Map();
+const REQUIRED_ADMIN_ENV = ["ADMIN_EMAIL", "ADMIN_PASSWORD", "ADMIN_SECRET"];
+
+function getMissingAdminEnvName() {
+	return REQUIRED_ADMIN_ENV.find((name) => !String(process.env[name] || "").trim()) || "";
+}
+
+function getMissingEnvMessage(name) {
+	return process.env.NODE_ENV === "development" && name
+		? `متغير ناقص: ${name}`
+		: "إعدادات الأدمن غير مكتملة في متغيرات البيئة.";
+}
 
 function base64UrlEncode(value) {
 	return Buffer.from(value).toString("base64url");
@@ -15,10 +26,12 @@ function signPayload(payload, secret) {
 }
 
 function createSessionToken(email) {
-	const secret = process.env.ADMIN_SECRET;
-	if (!secret) {
-		throw new Error("ADMIN_SECRET is not configured.");
+	const missingEnvName = getMissingAdminEnvName();
+	if (missingEnvName) {
+		throw new Error(getMissingEnvMessage(missingEnvName));
 	}
+
+	const secret = process.env.ADMIN_SECRET;
 
 	const payload = base64UrlEncode(JSON.stringify({
 		role: "admin",
@@ -103,15 +116,17 @@ export async function handleAdminLogin(request) {
 		const body = await request.json();
 		const email = String(body?.email ?? body?.username ?? "").trim().toLowerCase();
 		const password = String(body?.password ?? "");
-		const expectedEmail = String(process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-		const expectedPassword = process.env.ADMIN_PASSWORD;
+		const missingEnvName = getMissingAdminEnvName();
 
-		if (!expectedEmail || !expectedPassword || !process.env.ADMIN_SECRET) {
+		if (missingEnvName) {
 			return NextResponse.json(
-				{ message: "إعدادات الأدمن غير مكتملة في متغيرات البيئة." },
+				{ message: getMissingEnvMessage(missingEnvName) },
 				{ status: 500 }
 			);
 		}
+
+		const expectedEmail = String(process.env.ADMIN_EMAIL).trim().toLowerCase();
+		const expectedPassword = process.env.ADMIN_PASSWORD;
 
 		if (!email || !password) {
 			return NextResponse.json({ message: "يرجى إدخال البريد الإلكتروني وكلمة المرور." }, { status: 400 });

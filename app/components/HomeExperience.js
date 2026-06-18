@@ -7,6 +7,7 @@ import {
 	FiArrowRight,
 	FiCheckCircle,
 	FiClock,
+	FiCreditCard,
 	FiDownloadCloud,
 	FiSearch,
 	FiShield,
@@ -27,6 +28,12 @@ const faqs = [
 	["هل يمكنني مراجعة الطلب قبل الدفع؟", "نعم، صفحة الدفع تعرض ملخصًا واضحًا للسعر والرسوم والبطاقة بشكل مخفي."],
 	["هل تعمل المفاتيح على أكثر من جهاز؟", "يعتمد ذلك على نوع المنتج، وتظهر معلومات الضمان والتسليم في بطاقة المنتج وصفحته."],
 	["هل يوجد دعم بعد الشراء؟", "تظهر شروط الضمان والدعم داخل كل منتج، ويمكن متابعة حالة البريد من لوحة الإدارة."],
+];
+
+const deliverySteps = [
+	{ title: "اختر المنتج", text: "قارن السعر والضمان والتسليم من البطاقة مباشرة.", icon: FiSearch },
+	{ title: "راجع الطلب", text: "انتقل للدفع مع ملخص واضح للمنتج والسعر.", icon: FiCreditCard },
+	{ title: "استلم المفتاح", text: "تظهر حالة التسليم والضمان مع دعم الاستبدال.", icon: FiDownloadCloud },
 ];
 
 function productSlug(item) {
@@ -89,32 +96,42 @@ export default function HomeExperience() {
 	const featured = [...items]
 		.sort((a, b) => Number(b.stock || 0) - Number(a.stock || 0))
 		.slice(0, 6);
+	const heroProduct = featured[0] || items[0] || null;
+	const dealProducts = featured.slice(0, 3);
 
 	return (
 		<main className="premium-shell min-h-screen text-slate-900" dir="rtl">
 			<StoreNav />
-			<section className="premium-hero mx-auto grid w-full max-w-6xl gap-8 px-4 pb-12 pt-24 lg:min-h-screen lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+			<section className="premium-hero welcome-hero mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
 				<div className="hero-copy">
 					<div className="premium-eyebrow">
 						<FiZap />
-						متجر مفاتيح Premium للبرامج والألعاب
+						متجر مفاتيح رقمية موثوق
 					</div>
-					<h1 className="mt-5 text-4xl font-black leading-tight text-slate-950 sm:text-5xl lg:text-6xl dark-aware-text">
-						تجربة شراء رقمية بمستوى Microsoft و Adobe و Envato
+					<h1 className="welcome-title dark-aware-text">
+						فعّل برامجك وألعابك خلال دقائق بتجربة شراء واضحة وآمنة
 					</h1>
-					<p className="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg dark-aware-muted">
-						منتجات منظمة، بطاقات احترافية، تقييمات حقيقية، ملخص دفع واضح، وثيم Light/Dark مصمم لمتجر SaaS حديث.
+					<p className="welcome-subtitle dark-aware-muted">
+						مفاتيح Windows و Office و Adobe وبطاقات الألعاب في واجهة عربية هادئة، مع سعر واضح وضمان ظاهر قبل الانتقال للدفع.
 					</p>
-					<div className="mt-7 flex flex-wrap items-center gap-3">
-						<Link href="/products" className="primary-action">
-							تصفح المنتجات
+					<div className="welcome-trust-row">
+						<span><FiCheckCircle /> تفعيل فوري</span>
+						<span><FiShield /> ضمان استبدال</span>
+						<span><FiClock /> تسليم سريع</span>
+					</div>
+					<div className="welcome-actions">
+						<Link
+							href={heroProduct ? `/products/${productSlug(heroProduct)}` : "/products"}
+							className="primary-action"
+						>
+							{heroProduct ? "مشاهدة العرض الآن" : "تصفح المنتجات"}
 							<FiArrowRight />
 						</Link>
-						<a href="#faq" className="secondary-action">
-							الأسئلة الشائعة
+						<a href="#recommended" className="secondary-action">
+							العروض الموصى بها
 						</a>
 					</div>
-					<div className="live-stats mt-8">
+					<div className="live-stats welcome-stats">
 						<div><strong>{stats.products}</strong><span>منتج نشط</span></div>
 						<div><strong>{stats.stock}</strong><span>مفتاح متاح</span></div>
 						<div><strong>{stats.platforms}</strong><span>منصات</span></div>
@@ -126,54 +143,77 @@ export default function HomeExperience() {
 					<div className="floating-card hero-product-card">
 						<div className="relative aspect-[16/10] overflow-hidden rounded-2xl">
 							<Image
-								src="/images/real/laptop.jpg"
-								alt="متجر مفاتيح رقمي Premium"
+								src={heroProduct?.image || "/images/real/laptop.jpg"}
+								alt={heroProduct?.productName || "متجر مفاتيح رقمي Premium"}
 								fill
 								priority
-								sizes="(max-width: 1024px) 100vw, 520px"
-								className="object-cover"
+								sizes="(max-width: 768px) 90vw, 520px"
+								className="object-contain p-4"
 							/>
 						</div>
-						<div className="mt-4 flex items-center justify-between gap-4">
+						<div className="welcome-card-meta">
 							<div>
-								<p className="text-sm font-bold text-slate-500 dark-aware-muted">Windows 11 Pro</p>
-								<h2 className="text-2xl font-black dark-aware-text">تفعيل فوري</h2>
+								<p className="dark-aware-muted">{heroProduct?.platform || "Windows 11 Pro"}</p>
+								<h2 className="dark-aware-text">{heroProduct?.productName || "تفعيل فوري مع ضمان"}</h2>
 							</div>
-							<span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-black text-emerald-700">14.99$</span>
+							<span>{formatPrice(heroProduct?.price || 14.99)}</span>
 						</div>
+						<div className="welcome-card-features">
+							<span><FiDownloadCloud /> {heroProduct?.delivery || "وصول سريع"}</span>
+							<span><FiStar /> تقييم 4.9</span>
+						</div>
+						<Link
+							href={heroProduct ? `/products/${productSlug(heroProduct)}` : "/products"}
+							className="welcome-card-cta"
+						>
+							عرض التفاصيل
+							<FiArrowRight />
+						</Link>
 					</div>
-					<div className="hero-orbit orbit-one"><FiShield /></div>
-					<div className="hero-orbit orbit-two"><FiDownloadCloud /></div>
-					<div className="hero-orbit orbit-three"><FiClock /></div>
 				</div>
 			</section>
 
-			<section className="mx-auto w-full max-w-6xl px-4 py-10">
+			<section className="welcome-steps mx-auto grid w-full max-w-[1200px] gap-3 px-4 pb-8 md:grid-cols-3 md:px-6">
+				{deliverySteps.map((step) => {
+					const Icon = step.icon;
+					return (
+						<div key={step.title} className="welcome-step-card">
+							<span><Icon /></span>
+							<div>
+								<strong>{step.title}</strong>
+								<p>{step.text}</p>
+							</div>
+						</div>
+					);
+				})}
+			</section>
+
+			<section id="recommended" className="mx-auto w-full max-w-[1200px] px-4 py-8 md:px-6">
 				<div className="section-heading">
 					<div>
-						<p className="premium-eyebrow"><FiTrendingUp /> الأكثر طلبًا</p>
-						<h2 className="mt-3 text-3xl font-black dark-aware-text">بطاقات منتجات Premium</h2>
+						<p className="premium-eyebrow"><FiTrendingUp /> عروض موصى بها</p>
+						<h2 className="mt-3 text-3xl font-bold dark-aware-text">اختيارات سريعة للشراء</h2>
 					</div>
 					<Link href="/products" className="secondary-action">عرض الكل</Link>
 				</div>
 				<div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-					{loading ? [0, 1, 2].map((item) => <ProductSkeleton key={item} />) : featured.map((item, index) => (
+					{loading ? [0, 1, 2].map((item) => <ProductSkeleton key={item} />) : dealProducts.map((item) => (
 						<Link href={`/products/${productSlug(item)}`} key={item.id} className="premium-card premium-product-card">
 							<div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-slate-100">
 								<Image
 									src={item.image || "/images/real/dev-setup.jpg"}
 									alt={item.productName}
 									fill
-									sizes="(max-width: 768px) 100vw, 33vw"
-									priority={index === 0}
+									sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+									loading="lazy"
 									className="object-contain p-3"
 								/>
 								<span className="premium-badge">{item.platform}</span>
 							</div>
-							<h3 className="mt-4 text-xl font-black dark-aware-text">{item.productName}</h3>
+							<h3 className="mt-4 text-xl font-bold dark-aware-text">{item.productName}</h3>
 							<p className="product-desc mt-2 dark-aware-muted">{item.description}</p>
 							<div className="mt-4 flex items-center justify-between">
-								<strong className="text-2xl font-black text-[#1475d1]">{formatPrice(item.price)}</strong>
+								<strong className="text-2xl font-bold text-[#1475d1]">{formatPrice(item.price)}</strong>
 								<span className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700"><FiCheckCircle /> {item.delivery}</span>
 							</div>
 						</Link>

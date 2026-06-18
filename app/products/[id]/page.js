@@ -101,7 +101,7 @@ export default function ProductDetailsPage() {
 							alt={product.productName}
 							fill
 							priority
-							sizes="(max-width: 1024px) 100vw, 520px"
+							sizes="(max-width: 768px) 90vw, 520px"
 							className="object-contain p-5"
 						/>
 					</div>
@@ -170,7 +170,14 @@ export default function ProductDetailsPage() {
 						{related.map((item) => (
 							<Link href={`/products/${item.id}`} key={item.id} className="premium-card premium-product-card">
 								<div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-slate-100">
-									<Image src={item.image || "/images/real/dev-setup.jpg"} alt={item.productName} fill sizes="33vw" className="object-contain p-3" />
+									<Image
+										src={item.image || "/images/real/dev-setup.jpg"}
+										alt={item.productName}
+										fill
+										loading="lazy"
+										sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"
+										className="object-contain p-3"
+									/>
 								</div>
 								<h3 className="mt-4 font-black dark-aware-text">{item.productName}</h3>
 								<div className="mt-2 font-black text-[#1475d1]">{formatPrice(item.price)}</div>
