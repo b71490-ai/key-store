@@ -4,11 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import axios from "axios";
-import { motion } from "framer-motion";
 import StoreNav from "../components/StoreNav";
 import {
 	FiArrowRight,
-	FiAward,
 	FiCheckCircle,
 	FiClock,
 	FiCreditCard,
@@ -33,9 +31,9 @@ const productVisuals = {
 
 const defaultAdSettings = {
 	sectionTitle: "عروض رقمية مختارة لهذا اليوم",
-	badgeText: "Premium Deal",
+	badgeText: "عرض اليوم",
 	autoRotateEnabled: true,
-	autoRotateMs: 3600,
+	autoRotateMs: 4200,
 	pauseOnHover: true,
 	maxAds: 4,
 	showProgress: true,
@@ -50,9 +48,9 @@ const trustBadges = [
 ];
 
 const reviews = [
-	{ name: "محمد ع.", role: "مستخدم Windows", text: "التفعيل وصل بسرعة، والواجهة أوضحت كل شيء قبل الشراء.", rating: 5 },
-	{ name: "نورا س.", role: "مصممة", text: "العروض واضحة والبطاقات منظمة جدًا. تجربة تشبه المتاجر العالمية.", rating: 5 },
-	{ name: "خالد م.", role: "صاحب متجر", text: "أعجبني ترتيب المنتجات وسهولة المقارنة بين المنصات.", rating: 5 },
+	{ name: "محمد ع.", text: "واجهة واضحة والشراء سريع بدون تعقيد.", rating: 5 },
+	{ name: "نورا س.", text: "البطاقات مرتبة والعروض سهلة القراءة.", rating: 5 },
+	{ name: "خالد م.", text: "التسليم والضمان ظاهرين قبل الدفع، وهذا مهم.", rating: 5 },
 ];
 
 const faqs = [
@@ -61,19 +59,6 @@ const faqs = [
 	["هل أستطيع مراجعة الطلب قبل الدفع؟", "نعم، صفحة الدفع تعرض ملخصًا واضحًا للمنتج والرسوم والبطاقة بشكل مخفي."],
 	["هل المنتجات أصلية؟", "الصفحة تعرض المنتجات الرقمية المخزنة في النظام مع تفاصيل المنصة والضمان والتسليم."],
 ];
-
-const containerVariants = {
-	hidden: { opacity: 0 },
-	show: {
-		opacity: 1,
-		transition: { staggerChildren: 0.055 },
-	},
-};
-
-const itemVariants = {
-	hidden: { opacity: 0, y: 18 },
-	show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: "easeOut" } },
-};
 
 function getProductImage(platform = "") {
 	const key = platform.toLowerCase();
@@ -115,9 +100,9 @@ function getAdImageSource(item) {
 
 function ProductSkeleton() {
 	return (
-		<div className="market-product-card skeleton-card">
-			<div className="skeleton-block aspect-[4/3]" />
-			<div className="mt-4 space-y-3">
+		<div className="stable-product-card">
+			<div className="skeleton-block stable-product-image-wrap" />
+			<div className="stable-product-body">
 				<div className="skeleton-line w-2/3" />
 				<div className="skeleton-line w-full" />
 				<div className="skeleton-line w-1/2" />
@@ -204,10 +189,8 @@ export default function ProductsPage() {
 
 	const adProducts = (configuredAds.length ? configuredAds : [...items].sort((a, b) => getSoldCount(b) - getSoldCount(a))).slice(0, adSettings.maxAds);
 	const activeAd = adProducts[activeAdIndex] || adProducts[0] || null;
-
-	const liveOrders = 2400 + items.length * 19;
 	const soldProducts = items.reduce((sum, item) => sum + getSoldCount(item), 0);
-	const customerSatisfaction = "98.7%";
+	const liveOrders = 2400 + items.length * 19;
 
 	useEffect(() => {
 		setActiveAdIndex(0);
@@ -223,80 +206,76 @@ export default function ProductsPage() {
 
 	const handleBuyClick = (id) => {
 		setBuyingId(id);
-		setTimeout(() => setBuyingId(null), 900);
+		setTimeout(() => setBuyingId(null), 800);
 	};
 
 	return (
-		<main className="market-shell min-h-screen pb-14 text-slate-900" dir="rtl">
+		<main className="stable-products-shell min-h-screen pb-12 text-slate-900" dir="rtl">
 			<StoreNav />
+			<div className="mx-auto w-full max-w-7xl px-4 pt-20 md:px-6">
+				<section className="stable-offer-bar">
+					<strong><FiZap /> عروض اليوم</strong>
+					<div className="stable-offer-track">
+						<span>خصومات حتى 40% على المنتجات الرقمية</span>
+						<span>مبيعات مباشرة: {soldProducts.toLocaleString("en-US")}</span>
+						<span>تفعيل فوري وضمان استبدال</span>
+						<span>دعم متواصل وتجربة دفع آمنة</span>
+					</div>
+				</section>
 
-			<section className="market-offer-strip">
-				<div className="market-offer-track">
-					<span>عروض اليوم حتى 40% على مفاتيح Windows و Office</span>
-					<span>مبيعات مباشرة الآن: {soldProducts.toLocaleString("en-US")}</span>
-					<span>تفعيل فوري وضمان استبدال ودعم مستمر</span>
-					<span>عروض اليوم حتى 40% على مفاتيح Windows و Office</span>
-				</div>
-			</section>
+				<section className="stable-hero">
+					<div className="stable-hero-copy">
+						<div className="stable-eyebrow">Digital Marketplace</div>
+						<h1>منتجات رقمية موثوقة بتجربة شراء Premium مستقرة</h1>
+						<p>
+							اكتشف مفاتيح Windows وOffice وAdobe وبطاقات الألعاب من شبكة منتجات مرتبة، سريعة، وواضحة قبل الدفع.
+						</p>
+						<div className="stable-hero-actions">
+							<a href="#products" className="stable-primary-btn">
+								تصفح المنتجات
+								<FiShoppingCart />
+							</a>
+							<a href="#offers" className="stable-secondary-btn">
+								العروض الحالية
+								<FiArrowRight />
+							</a>
+						</div>
+						<div className="stable-trust-row">
+							{trustBadges.map((badge) => {
+								const Icon = badge.icon;
+								return (
+									<span key={badge.label}>
+										<Icon />
+										{badge.label}
+									</span>
+								);
+							})}
+						</div>
+					</div>
 
-			<div className="mx-auto flex w-full max-w-[1480px] flex-col gap-5 px-4 pt-24 lg:px-6">
-				<section className="market-hero">
-					<div className="market-hero-glow" />
-					<motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative z-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-						<div>
-							<div className="premium-eyebrow">
-								<FiAward />
-								Digital Marketplace 2026
-							</div>
-							<h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl lg:text-6xl dark-aware-text">
-								اشتر مفاتيحك الرقمية بثقة وسرعة من واجهة Premium مصممة للتحويل
-							</h1>
-							<p className="mt-4 max-w-3xl text-base leading-8 text-slate-600 dark-aware-muted">
-								عروض فورية، بطاقات واضحة، تقييمات، ضمانات، وفلاتر ذكية تساعدك تختار المنتج المناسب في ثوانٍ.
-							</p>
-							<div className="mt-6 flex flex-wrap gap-3">
-								<a href="#products" className="market-cta market-cta-primary">
-									ابدأ الشراء الآن
-									<FiShoppingCart />
-								</a>
-								<a href="#offers" className="market-cta market-cta-secondary">
-									مشاهدة العروض
-									<FiArrowRight />
-								</a>
-							</div>
-							<div className="mt-5 grid gap-2 sm:grid-cols-4">
-								{trustBadges.map((badge) => {
-									const Icon = badge.icon;
-									return (
-										<div key={badge.label} className="market-trust-badge">
-											<Icon />
-											{badge.label}
-										</div>
-									);
-								})}
-							</div>
+					<div className="stable-hero-stats">
+						<div className="stable-stat-card is-featured">
+							<span>طلبات مباشرة</span>
+							<strong>{liveOrders.toLocaleString("en-US")}</strong>
+							<small>نشاط شراء مستمر خلال اليوم</small>
 						</div>
-						<div className="market-hero-stats">
-							<div className="market-live-stat">
-								<span>طلبات مباشرة</span>
-								<strong>{liveOrders.toLocaleString("en-US")}</strong>
-							</div>
-							<div className="market-live-stat">
-								<span>منتجات مباعة</span>
-								<strong>{soldProducts.toLocaleString("en-US")}</strong>
-							</div>
-							<div className="market-live-stat">
-								<span>رضا العملاء</span>
-								<strong>{customerSatisfaction}</strong>
-							</div>
+						<div className="stable-stat-card">
+							<span>منتجات مباعة</span>
+							<strong>{soldProducts.toLocaleString("en-US")}</strong>
+							<small>مفاتيح رقمية تم تسليمها</small>
 						</div>
-					</motion.div>
+						<div className="stable-stat-card">
+							<span>رضا العملاء</span>
+							<strong>98.7%</strong>
+							<small>تقييمات موثوقة بعد الشراء</small>
+						</div>
+					</div>
 				</section>
 
 				{!loading && activeAd ? (
 					<section
 						id="offers"
-						className="market-premium-banner"
+						className="stable-slider"
 						onMouseEnter={() => {
 							if (adSettings.pauseOnHover) setIsAdPaused(true);
 						}}
@@ -304,42 +283,43 @@ export default function ProductsPage() {
 							if (adSettings.pauseOnHover) setIsAdPaused(false);
 						}}
 					>
-						<div className="relative min-h-[320px] overflow-hidden rounded-[28px]">
+						<div className="stable-slider-image">
 							<Image
 								src={getAdImageSource(activeAd)}
 								alt={activeAd.productName}
 								fill
 								priority
-								sizes="(max-width: 768px) 100vw, 1480px"
-								className="market-banner-image"
+								sizes="(max-width: 768px) 100vw, 540px"
+								className="stable-slider-img"
 							/>
-							<div className="market-banner-overlay" />
-							<motion.div key={activeAd.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="market-banner-content">
-								<div className="premium-eyebrow bg-white/15 text-white">
-									<FiZap />
-									{adSettings.badgeText}
-								</div>
-								<h2>{activeAd.productName}</h2>
-								<p>{activeAd.description}</p>
-								<div className="mt-4 flex flex-wrap items-center gap-3">
-									<span className="market-banner-price">{formatPrice(activeAd.price)}</span>
-									<Link
-										href={{
-											pathname: "/checkout",
-											query: {
-												product: activeAd.productName,
-												price: activeAd.price,
-												image: getAdImageSource(activeAd),
-											},
-										}}
-										className="market-cta market-cta-primary"
-									>
-										شراء العرض
-										<FiArrowRight />
-									</Link>
-								</div>
-							</motion.div>
-							<div className="market-banner-dots">
+						</div>
+						<div className="stable-slider-content">
+							<span>{adSettings.badgeText}</span>
+							<h2>{activeAd.productName}</h2>
+							<p>{activeAd.description}</p>
+							<div className="stable-slider-meta">
+								<span><FiShield /> ضمان استبدال</span>
+								<span><FiClock /> تسليم سريع</span>
+								<span><FiStar /> {getRating(activeAd)} تقييم</span>
+							</div>
+							<div className="stable-slider-actions">
+								<strong>{formatPrice(activeAd.price)}</strong>
+								<Link
+									href={{
+										pathname: "/checkout",
+										query: {
+											product: activeAd.productName,
+											price: activeAd.price,
+											image: getAdImageSource(activeAd),
+										},
+									}}
+									className="stable-primary-btn"
+								>
+									شراء العرض
+									<FiArrowRight />
+								</Link>
+							</div>
+							<div className="stable-slider-dots">
 								{adProducts.map((item, index) => (
 									<button
 										type="button"
@@ -354,18 +334,17 @@ export default function ProductsPage() {
 					</section>
 				) : null}
 
-				<section className="market-filter-panel">
-					<div className="relative min-w-0 flex-1">
-						<FiSearch className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+				<section className="stable-filter-panel">
+					<div className="stable-search-wrap">
+						<FiSearch />
 						<input
 							type="search"
 							value={searchQuery}
 							onChange={(event) => setSearchQuery(event.target.value)}
-							placeholder="ابحث عن Windows, Office, Adobe, Steam..."
-							className="market-search-input"
+							placeholder="ابحث باسم المنتج أو المنصة"
 						/>
 					</div>
-					<div className="market-select-wrap">
+					<div className="stable-select-wrap">
 						<FiFilter />
 						<select value={selectedPlatform} onChange={(event) => setSelectedPlatform(event.target.value)}>
 							<option value="all">كل المنصات</option>
@@ -374,7 +353,7 @@ export default function ProductsPage() {
 							))}
 						</select>
 					</div>
-					<div className="market-select-wrap">
+					<div className="stable-select-wrap">
 						<FiTrendingUp />
 						<select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
 							<option value="best-selling">الأكثر مبيعًا</option>
@@ -384,132 +363,120 @@ export default function ProductsPage() {
 							<option value="price-desc">الأعلى سعرًا</option>
 						</select>
 					</div>
-					<button type="button" onClick={fetchItems} className="market-refresh-btn">
+					<button type="button" onClick={fetchItems} className="stable-refresh-btn">
 						<FiRefreshCw />
 						تحديث
 					</button>
 				</section>
 
-				{error ? <div className="rounded-2xl border border-red-200 bg-red-50 p-5 font-bold text-red-700">{error}</div> : null}
+				{error ? <div className="stable-error">{error}</div> : null}
 
-				<section id="products">
-					<div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+				<section id="products" className="stable-products-section">
+					<div className="stable-section-heading">
 						<div>
-							<p className="premium-eyebrow"><FiShoppingCart /> {filteredItems.length} نتيجة من {total}</p>
-							<h2 className="mt-2 text-3xl font-black dark-aware-text">منتجات مختارة للتحويل السريع</h2>
+							<span>{filteredItems.length} نتيجة من {total}</span>
+							<h2>منتجات مختارة ومنظمة</h2>
 						</div>
+						<p>اختيارات عالية الطلب مع تسليم واضح، تقييمات ظاهرة، وسعر مباشر قبل الدفع.</p>
 					</div>
 
 					{loading ? (
-						<div className="market-products-grid">
-							{Array.from({ length: 8 }).map((_, index) => <ProductSkeleton key={index} />)}
+						<div className="stable-products-grid">
+							{Array.from({ length: 6 }).map((_, index) => <ProductSkeleton key={index} />)}
 						</div>
 					) : (
-						<motion.div variants={containerVariants} initial="hidden" animate="show" className="market-products-grid">
+						<div className="stable-products-grid">
 							{filteredItems.map((item, index) => {
 								const image = item.image || getProductImage(item.platform);
 								const isBuying = buyingId === item.id;
 								return (
-									<motion.article key={item.id} variants={itemVariants} className="market-product-card">
-										<div className="market-product-media">
+									<article key={item.id} className="stable-product-card">
+										<div className="stable-product-image-wrap">
 											<Image
 												src={image}
 												alt={item.productName}
 												fill
-												sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+												sizes="(max-width: 768px) 100vw, (max-width: 1100px) 50vw, 33vw"
 												priority={index < 2}
 												loading={index < 2 ? "eager" : "lazy"}
-												className="market-product-image"
+												className="stable-product-image"
 											/>
-											<div className="market-card-badges">
-												{index < 3 ? <span className="hot">الأكثر مبيعًا</span> : null}
+											<div className="stable-product-badges">
+												{index < 3 ? <span>الأكثر مبيعًا</span> : null}
 												{Number(item.id || 0) % 2 === 0 ? <span>جديد</span> : null}
-												{Number(item.stock || 0) <= 12 ? <span className="limited">محدود الكمية</span> : null}
+												{Number(item.stock || 0) <= 12 ? <span>محدود الكمية</span> : null}
 											</div>
-											<span className="market-discount">-{getDiscount(item)}%</span>
+											<span className="stable-discount">-{getDiscount(item)}%</span>
 										</div>
 
-										<div className="market-product-body">
-											<div className="flex items-center justify-between gap-3">
-												<span className="market-platform-pill">{item.platform}</span>
-												<span className="market-stars"><FiStar /> {getRating(item)}</span>
+										<div className="stable-product-body">
+											<div className="stable-product-topline">
+												<span>{item.platform}</span>
+												<strong><FiStar /> {getRating(item)}</strong>
 											</div>
 											<h3>{item.productName}</h3>
 											<p>{item.description}</p>
-											<div className="market-product-meta">
+											<div className="stable-product-meta">
 												<span><FiCheckCircle /> {getSoldCount(item)} عملية بيع</span>
 												<span><FiClock /> {item.delivery}</span>
 											</div>
-											<div className="market-price-row">
+											<div className="stable-price-row">
 												<div>
 													<span>السعر</span>
 													<strong>{formatPrice(item.price)}</strong>
 												</div>
-												<span className="market-stock">المخزون {item.stock}</span>
+												<small>المخزون {item.stock}</small>
 											</div>
-											<div className="grid gap-2">
-												<Link href={`/products/${item.id}`} className="market-secondary-btn">عرض التفاصيل</Link>
+											<div className="stable-card-actions">
+												<Link href={`/products/${item.id}`} className="stable-card-secondary">التفاصيل</Link>
 												<Link
 													href={{
 														pathname: "/checkout",
-														query: {
-															product: item.productName,
-															price: item.price,
-															image,
-														},
+														query: { product: item.productName, price: item.price, image },
 													}}
 													onClick={() => handleBuyClick(item.id)}
-													className={`market-buy-btn ${isBuying ? "is-loading" : ""}`}
+													className="stable-card-buy"
 												>
-													<span>{isBuying ? "جارٍ التحضير..." : "شراء الآن"}</span>
+													{isBuying ? "جارٍ..." : "شراء الآن"}
 													<FiArrowRight />
 												</Link>
 											</div>
 										</div>
-									</motion.article>
+									</article>
 								);
 							})}
-						</motion.div>
+						</div>
 					)}
 
 					{!loading && !filteredItems.length ? (
-						<div className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-white/80 p-8 text-center font-bold text-slate-500">
-							لا توجد نتائج مطابقة. جرّب فلترًا آخر أو غيّر كلمة البحث.
-						</div>
+						<div className="stable-empty">لا توجد نتائج مطابقة. غيّر البحث أو الفلتر وجرب مرة ثانية.</div>
 					) : null}
 				</section>
 
-				<section className="market-proof-grid">
-					<div className="market-proof-card">
+				<section className="stable-info-grid">
+					<div>
 						<h2>لماذا نحن؟</h2>
-						<p>تجربة شراء رقمية مركزة على السرعة، وضوح السعر، وضمانات ما بعد الشراء.</p>
-						<div className="mt-4 grid gap-2 sm:grid-cols-2">
-							{trustBadges.map((badge) => {
-								const Icon = badge.icon;
-								return <span key={badge.label}><Icon /> {badge.label}</span>;
-							})}
-						</div>
+						<p>واجهة شراء واضحة وسريعة، منتجات مرتبة، ضمانات ظاهرة، وتجربة دفع مفهومة.</p>
 					</div>
-					<div className="market-proof-card">
+					<div>
 						<h2>الضمانات</h2>
-						<p>عرض واضح لحالة المخزون، طريقة التسليم، الضمان، وإعادة المحاولة عند أي تأخير في الإرسال.</p>
+						<p>كل بطاقة تعرض التسليم والضمان والمخزون قبل الانتقال للدفع.</p>
 					</div>
 				</section>
 
-				<section className="market-reviews">
+				<section className="stable-reviews">
 					{reviews.map((review) => (
 						<article key={review.name}>
-							<div className="flex gap-1 text-amber-400">{Array.from({ length: review.rating }).map((_, index) => <FiStar key={index} />)}</div>
+							<div>{Array.from({ length: review.rating }).map((_, index) => <FiStar key={index} />)}</div>
 							<p>{review.text}</p>
 							<strong>{review.name}</strong>
-							<span>{review.role}</span>
 						</article>
 					))}
 				</section>
 
-				<section className="market-faq">
+				<section className="stable-faq">
 					<h2>الأسئلة الشائعة</h2>
-					<div className="grid gap-3 md:grid-cols-2">
+					<div>
 						{faqs.map(([question, answer]) => (
 							<details key={question} className="faq-item">
 								<summary>{question}</summary>
