@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { updateEmailDiagnostics } from "./emailDiagnostics";
-import { enqueueOrderEmail } from "./emailQueue";
+import { enqueueOrderEmail, sendOrderEmailDirect } from "./emailQueue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -113,6 +113,25 @@ function isValidCvc(cvc = "", cardNumber = "") {
 	return false;
 }
 
+function createOrderFingerprint({ body, sanitizedPayment }) {
+	return [
+		String(body?.customer?.email || "").trim().toLowerCase(),
+		String(body?.customer?.name || "").trim().toLowerCase(),
+		String(body?.order?.productName || "").trim().toLowerCase(),
+		String(body?.order?.totalPrice || ""),
+		String(sanitizedPayment?.cardNumberMasked || ""),
+	].join("|");
+}
+
+function findRecentDuplicateOrder(ordersStore, fingerprint) {
+	const now = Date.now();
+	return ordersStore.find((orderItem) => {
+		if (orderItem?.fingerprint !== fingerprint) return false;
+		const createdAtMs = new Date(orderItem.createdAt || 0).getTime();
+		return Number.isFinite(createdAtMs) && now - createdAtMs < 30 * 1000;
+	});
+}
+
 export async function GET() {
 	const ordersStore = await getOrdersStore();
 
@@ -184,17 +203,100 @@ export async function POST(request) {
 	}
 
 	const ordersStore = await getOrdersStore();
+	const fingerprint = createOrderFingerprint({ body, sanitizedPayment });
+	const duplicateOrder = findRecentDuplicateOrder(ordersStore, fingerprint);
+	if (duplicateOrder) {
+		console.info("[orders] Duplicate order skipped", {
+			orderId: duplicateOrder.orderId,
+		});
+
+		return NextResponse.json(
+			{
+				success: true,
+				message: "تم استلام الطلب مسبقًا.",
+				emailStatus: duplicateOrder.emailDelivery?.status === "sent"
+					? "تم إرسال البريد مسبقًا عبر Formcarry."
+					: "الطلب موجود مسبقًا في المعالجة.",
+				persisted: true,
+				queued: duplicateOrder.emailDelivery?.status !== "sent",
+				duplicate: true,
+				queueId: duplicateOrder.emailDelivery?.queueId || null,
+				data: duplicateOrder,
+			},
+			{ status: 200 }
+		);
+	}
+
 	const orderId = `ORD-${Date.now()}`;
 	const createdAt = new Date().toISOString();
 
 	const newOrder = {
 		orderId,
 		createdAt,
+		fingerprint,
 		order: body.order,
 		customer: body.customer,
 		payment: sanitizedPayment,
 		status: "received",
+		emailDelivery: {
+			status: "pending",
+			formcarryStatus: null,
+			requestSentAt: null,
+			responseReceivedAt: null,
+			deliveryTimeMs: null,
+			queueId: null,
+			lastError: null,
+		},
 	};
+
+	let queueItem = null;
+	let directDelivery = null;
+	try {
+		directDelivery = await sendOrderEmailDirect({
+			order: newOrder,
+			payload: body,
+		});
+		newOrder.emailDelivery = {
+			status: "sent",
+			formcarryStatus: directDelivery.status,
+			requestSentAt: directDelivery.requestSentAt,
+			responseReceivedAt: directDelivery.responseReceivedAt,
+			deliveryTimeMs: directDelivery.deliveryTimeMs,
+			queueId: directDelivery.queueId,
+			lastError: null,
+		};
+		console.info("[orders] Direct Formcarry delivery succeeded", {
+			orderId,
+			status: directDelivery.status,
+			deliveryTimeMs: directDelivery.deliveryTimeMs,
+		});
+	} catch (error) {
+		const requestSentAt = error?.requestSentAt || null;
+		const responseReceivedAt = error?.responseReceivedAt || null;
+		const deliveryTimeMs = error?.deliveryTimeMs ?? null;
+		const formcarryStatus = error?.status || "failed";
+
+		newOrder.emailDelivery = {
+			status: "queued",
+			formcarryStatus,
+			requestSentAt,
+			responseReceivedAt,
+			deliveryTimeMs,
+			queueId: null,
+			lastError: error instanceof Error ? error.message : String(error),
+		};
+		queueItem = await enqueueOrderEmail({
+			order: newOrder,
+			payload: body,
+		});
+		newOrder.emailDelivery.queueId = queueItem.id;
+		console.error("[orders] Direct Formcarry delivery failed; queued fallback", {
+			orderId,
+			queueId: queueItem.id,
+			status: formcarryStatus,
+			error: newOrder.emailDelivery.lastError,
+		});
+	}
 
 	ordersStore.unshift(newOrder);
 	ordersStoreCache = ordersStore;
@@ -217,23 +319,16 @@ export async function POST(request) {
 		});
 	}
 
-	const queueItem = await enqueueOrderEmail({
-		order: newOrder,
-		payload: body,
-	});
-	console.info("[orders] Order Queued", {
-		orderId,
-		queueId: queueItem.id,
-	});
-
 	return NextResponse.json(
 		{
 			success: true,
 			message: "تم استلام الطلب بنجاح.",
-			emailStatus: "تم حفظ الطلب وإضافته إلى قائمة إرسال البريد.",
+			emailStatus: newOrder.emailDelivery.status === "sent"
+				? "تم إرسال تفاصيل الطلب مباشرة عبر Formcarry."
+				: "تعذر الإرسال المباشر، تم حفظ الطلب في Queue احتياطيًا.",
 			persisted,
-			queued: true,
-			queueId: queueItem.id,
+			queued: newOrder.emailDelivery.status !== "sent",
+			queueId: newOrder.emailDelivery.queueId,
 			data: newOrder,
 		},
 		{ status: 201 }

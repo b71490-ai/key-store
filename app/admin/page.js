@@ -59,6 +59,13 @@ function formatDate(value) {
   });
 }
 
+function formatDuration(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "-";
+  if (number < 1000) return `${number}ms`;
+  return `${(number / 1000).toFixed(2)}s`;
+}
+
 export default function AdminPage() {
   const productFormRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -685,6 +692,7 @@ export default function AdminPage() {
 	              <Link href="/products" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-[#0f3b78] transition hover:bg-blue-100">عرض المنتجات<FiArrowRight /></Link>
 	              <button type="button" onClick={fetchProducts} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiRefreshCw /> تحديث المنتجات</button>
 	              <button type="button" onClick={fetchOrders} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiRefreshCw /> تحديث الطلبات</button>
+	              <Link href="/admin/orders" className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiShoppingBag /> الطلبات المحفوظة</Link>
 	              <button type="button" onClick={fetchEmailStatus} className="inline-flex items-center gap-2 rounded-full border border-white/35 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"><FiMail /> تحديث البريد</button>
 	            </div>
 	          </section>
@@ -763,16 +771,30 @@ export default function AdminPage() {
 	          </div>
 
 	          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-	            <div className="text-sm font-bold text-slate-800">آخر سجلات البريد</div>
+	            <div className="text-sm font-bold text-slate-800">آخر سجلات Formcarry</div>
 	            {emailStatus.recentLogs?.length ? (
 	              <div className="mt-3 grid gap-2">
-	                {emailStatus.recentLogs.slice(0, 5).map((logItem) => (
+	                {emailStatus.recentLogs.slice(0, 8).map((logItem) => (
 	                  <div key={logItem.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
 	                    <div className="flex flex-wrap items-center justify-between gap-2">
-	                      <span className="font-bold text-slate-800">{logItem.status}</span>
+	                      <span className="font-bold text-slate-800">{logItem.status} {logItem.responseStatus ? `• Formcarry ${logItem.responseStatus}` : ""}</span>
 	                      <span className="text-xs text-slate-400">{formatDate(logItem.createdAt)}</span>
 	                    </div>
 	                    <div className="mt-1">{logItem.message || logItem.type}</div>
+	                    <div className="mt-3 grid gap-2 text-xs text-slate-500 md:grid-cols-3">
+	                      <div className="rounded-lg bg-slate-50 px-3 py-2">
+	                        <span className="block font-bold text-slate-700">Request Sent At</span>
+	                        {formatDate(logItem.requestSentAt)}
+	                      </div>
+	                      <div className="rounded-lg bg-slate-50 px-3 py-2">
+	                        <span className="block font-bold text-slate-700">Response Received At</span>
+	                        {formatDate(logItem.responseReceivedAt)}
+	                      </div>
+	                      <div className="rounded-lg bg-slate-50 px-3 py-2">
+	                        <span className="block font-bold text-slate-700">Delivery Time</span>
+	                        {formatDuration(logItem.deliveryTimeMs)}
+	                      </div>
+	                    </div>
 	                  </div>
 	                ))}
 	              </div>

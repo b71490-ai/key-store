@@ -2,9 +2,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { updateEmailDiagnostics } from "./emailDiagnostics";
 
-const MAX_EMAIL_ATTEMPTS = 10;
-const RETRY_DELAY_MS = 60 * 1000;
-const EMAIL_TIMEOUT_MS = 10 * 1000;
+const MAX_EMAIL_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [20 * 1000, 60 * 1000, 5 * 60 * 1000];
+const EMAIL_TIMEOUT_MS = 5 * 1000;
 
 const queueFilePath = path.join("/tmp", "key-store-data", "orders_queue.json");
 const emailLogsFilePath = path.join("/tmp", "key-store-data", "email_logs.json");
@@ -13,6 +13,7 @@ const failedEmailsFilePath = path.join("/tmp", "key-store-data", "failed_emails.
 let queueCache = null;
 let emailLogsCache = null;
 let failedEmailsCache = null;
+let scheduledRetryTimer = null;
 
 async function readJsonArray(filePath) {
 	try {
@@ -123,11 +124,42 @@ function buildFormcarryBody({ queueItem, orderReceiverEmail }) {
 		coupon_code: String(body?.order?.couponCode || "-"),
 		payment_method: String(body?.payment?.method || queueItem.order?.payment?.method || "card"),
 		card_holder: String(body?.payment?.cardHolder || queueItem.order?.payment?.cardHolder || ""),
-		card_last: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(),
+		card_last: normalizeCardNumber(body?.payment?.cardNumberRaw || "").slice(-4),
 		card_expiry: String(body?.payment?.card_expiry || queueItem.order?.payment?.card_expiry || ""),
 		order_id: queueItem.orderId,
 		receiver_email: orderReceiverEmail,
 	});
+}
+
+function getRetryDelayMs(attempts) {
+	return RETRY_DELAYS_MS[Math.max(0, Math.min(Number(attempts || 1) - 1, RETRY_DELAYS_MS.length - 1))];
+}
+
+function getDeliveryTimeMs(requestSentAt, responseReceivedAt) {
+	return Math.max(0, new Date(responseReceivedAt).getTime() - new Date(requestSentAt).getTime());
+}
+
+function createDeliveryError(message, metadata = {}) {
+	const error = new Error(message);
+	Object.assign(error, metadata);
+	return error;
+}
+
+function scheduleQueueProcessing(delayMs) {
+	if (scheduledRetryTimer) return;
+
+	scheduledRetryTimer = setTimeout(() => {
+		scheduledRetryTimer = null;
+		processEmailQueue({ limit: 10 }).catch((error) => {
+			console.error("[email-worker] Scheduled retry failed", {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	}, delayMs);
+
+	if (typeof scheduledRetryTimer.unref === "function") {
+		scheduledRetryTimer.unref();
+	}
 }
 
 async function appendEmailLog(entry) {
@@ -165,6 +197,7 @@ async function recordFailedEmail(queueItem, reason) {
 async function sendQueuedEmail(queueItem, mailConfig) {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), EMAIL_TIMEOUT_MS);
+	const requestSentAt = new Date().toISOString();
 
 	try {
 		console.info("[email-worker] Formcarry Request Sent", {
@@ -172,26 +205,49 @@ async function sendQueuedEmail(queueItem, mailConfig) {
 			queueId: queueItem.id,
 			attempt: queueItem.attempts + 1,
 			timeoutMs: EMAIL_TIMEOUT_MS,
+			requestSentAt,
 		});
 
-		const response = await fetch(mailConfig.formcarryEndpoint, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-				Accept: "application/json",
-			},
-			body: buildFormcarryBody({
-				queueItem,
-				orderReceiverEmail: mailConfig.orderReceiverEmail,
-			}).toString(),
-			signal: controller.signal,
-		});
-		const responseText = await response.text();
+		let response;
+		let responseText = "";
+		try {
+			response = await fetch(mailConfig.formcarryEndpoint, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+					Accept: "application/json",
+				},
+				body: buildFormcarryBody({
+					queueItem,
+					orderReceiverEmail: mailConfig.orderReceiverEmail,
+				}).toString(),
+				signal: controller.signal,
+			});
+			responseText = await response.text();
+		} catch (error) {
+			const responseReceivedAt = new Date().toISOString();
+			throw createDeliveryError(
+				error?.name === "AbortError"
+					? `Formcarry request timed out after ${EMAIL_TIMEOUT_MS}ms`
+					: error instanceof Error ? error.message : String(error),
+				{
+					requestSentAt,
+					responseReceivedAt,
+					deliveryTimeMs: getDeliveryTimeMs(requestSentAt, responseReceivedAt),
+					status: error?.name === "AbortError" ? "timeout" : "network_error",
+				}
+			);
+		}
+		const responseReceivedAt = new Date().toISOString();
+		const deliveryTimeMs = getDeliveryTimeMs(requestSentAt, responseReceivedAt);
 
 		console.info("[email-worker] Formcarry Response Status", {
 			orderId: queueItem.orderId,
 			queueId: queueItem.id,
 			status: response.status,
+			requestSentAt,
+			responseReceivedAt,
+			deliveryTimeMs,
 		});
 
 		await updateEmailDiagnostics({
@@ -199,22 +255,77 @@ async function sendQueuedEmail(queueItem, mailConfig) {
 				orderId: queueItem.orderId,
 				queueId: queueItem.id,
 				status: response.status,
-				ok: response.ok,
+				ok: response.status === 200,
 				response: responseText.slice(0, 500),
+				requestSentAt,
+				responseReceivedAt,
+				deliveryTimeMs,
 			},
 		});
 
-		if (!response.ok) {
-			throw new Error(`Formcarry responded with ${response.status}: ${responseText.slice(0, 300)}`);
+		if (response.status !== 200) {
+			throw createDeliveryError(`Formcarry responded with ${response.status}: ${responseText.slice(0, 300)}`, {
+				status: response.status,
+				response: responseText.slice(0, 500),
+				requestSentAt,
+				responseReceivedAt,
+				deliveryTimeMs,
+			});
 		}
 
 		return {
 			status: response.status,
 			response: responseText.slice(0, 500),
+			requestSentAt,
+			responseReceivedAt,
+			deliveryTimeMs,
 		};
 	} finally {
 		clearTimeout(timeout);
 	}
+}
+
+export async function sendOrderEmailDirect({ order, payload }) {
+	const mailConfig = getMailConfig();
+	const directItem = {
+		id: `DIRECT-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+		orderId: order.orderId,
+		status: "sending",
+		attempts: 0,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		nextAttemptAt: null,
+		lastError: null,
+		order,
+		payload,
+	};
+
+	if (mailConfig.missing.length) {
+		throw createDeliveryError(`Missing Environment Variables: ${mailConfig.missing.join(", ")}`, {
+			status: "missing_env",
+			missing: mailConfig.missing,
+		});
+	}
+
+	const result = await sendQueuedEmail(directItem, mailConfig);
+	await appendEmailLog({
+		type: "direct_sent",
+		status: "sent",
+		orderId: order.orderId,
+		queueId: directItem.id,
+		attempt: 1,
+		responseStatus: result.status,
+		requestSentAt: result.requestSentAt,
+		responseReceivedAt: result.responseReceivedAt,
+		deliveryTimeMs: result.deliveryTimeMs,
+		message: "Email delivered directly through Formcarry.",
+	});
+
+	return {
+		...result,
+		direct: true,
+		queueId: directItem.id,
+	};
 }
 
 export async function enqueueOrderEmail({ order, payload }) {
@@ -227,7 +338,11 @@ export async function enqueueOrderEmail({ order, payload }) {
 		attempts: 0,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		nextAttemptAt: new Date().toISOString(),
+		nextAttemptAt: new Date(Date.now() + RETRY_DELAYS_MS[0]).toISOString(),
+		requestSentAt: null,
+		responseReceivedAt: null,
+		deliveryTimeMs: null,
+		responseStatus: null,
 		lastError: null,
 		order,
 		payload,
@@ -238,7 +353,7 @@ export async function enqueueOrderEmail({ order, payload }) {
 			...queue[existingIndex],
 			status: "pending",
 			updatedAt: new Date().toISOString(),
-			nextAttemptAt: new Date().toISOString(),
+			nextAttemptAt: queue[existingIndex].nextAttemptAt || new Date(Date.now() + RETRY_DELAYS_MS[0]).toISOString(),
 			order,
 			payload,
 		};
@@ -253,8 +368,10 @@ export async function enqueueOrderEmail({ order, payload }) {
 		status: "pending",
 		orderId: order.orderId,
 		queueId: queueItem.id,
-		message: "Order added to local email queue.",
+		nextAttemptAt: queueItem.nextAttemptAt,
+		message: "Order added to local email queue as fallback.",
 	});
+	scheduleQueueProcessing(Math.max(0, new Date(queueItem.nextAttemptAt).getTime() - Date.now()));
 
 	return queueItem;
 }
@@ -301,6 +418,10 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 			queueItem.sentAt = new Date().toISOString();
 			queueItem.updatedAt = queueItem.sentAt;
 			queueItem.lastError = null;
+			queueItem.requestSentAt = sentResult.requestSentAt;
+			queueItem.responseReceivedAt = sentResult.responseReceivedAt;
+			queueItem.deliveryTimeMs = sentResult.deliveryTimeMs;
+			queueItem.responseStatus = sentResult.status;
 
 			await appendEmailLog({
 				type: "sent",
@@ -309,6 +430,9 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 				queueId: queueItem.id,
 				attempt: queueItem.attempts + 1,
 				responseStatus: sentResult.status,
+				requestSentAt: sentResult.requestSentAt,
+				responseReceivedAt: sentResult.responseReceivedAt,
+				deliveryTimeMs: sentResult.deliveryTimeMs,
 				message: "Email delivered through Formcarry.",
 			});
 			await updateEmailDiagnostics({
@@ -324,8 +448,13 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 			queueItem.attempts = Number(queueItem.attempts || 0) + 1;
 			queueItem.status = queueItem.attempts >= MAX_EMAIL_ATTEMPTS ? "failed" : "retrying";
 			queueItem.updatedAt = new Date().toISOString();
-			queueItem.nextAttemptAt = new Date(Date.now() + RETRY_DELAY_MS).toISOString();
+			const retryDelayMs = getRetryDelayMs(queueItem.attempts);
+			queueItem.nextAttemptAt = queueItem.status === "failed" ? null : new Date(Date.now() + retryDelayMs).toISOString();
 			queueItem.lastError = error instanceof Error ? error.message : String(error);
+			queueItem.requestSentAt = error?.requestSentAt || queueItem.requestSentAt || null;
+			queueItem.responseReceivedAt = error?.responseReceivedAt || queueItem.responseReceivedAt || null;
+			queueItem.deliveryTimeMs = error?.deliveryTimeMs ?? queueItem.deliveryTimeMs ?? null;
+			queueItem.responseStatus = error?.status || queueItem.responseStatus || null;
 
 			await appendEmailLog({
 				type: "failed_attempt",
@@ -333,6 +462,11 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 				orderId: queueItem.orderId,
 				queueId: queueItem.id,
 				attempt: queueItem.attempts,
+				responseStatus: queueItem.responseStatus,
+				requestSentAt: queueItem.requestSentAt,
+				responseReceivedAt: queueItem.responseReceivedAt,
+				deliveryTimeMs: queueItem.deliveryTimeMs,
+				nextAttemptAt: queueItem.nextAttemptAt,
 				message: queueItem.lastError,
 			});
 			await updateEmailDiagnostics({
@@ -352,6 +486,8 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 
 			if (queueItem.status === "failed") {
 				await recordFailedEmail(queueItem, queueItem.lastError);
+			} else {
+				scheduleQueueProcessing(retryDelayMs);
 			}
 
 			processed.push({ orderId: queueItem.orderId, status: queueItem.status });
@@ -412,13 +548,67 @@ export async function retryAllEmails() {
 	return processEmailQueue({ force: true, limit: 50 });
 }
 
+export async function retryOrderEmail(orderId) {
+	const requestedOrderId = String(orderId || "").trim();
+	if (!requestedOrderId) {
+		throw new Error("Missing orderId.");
+	}
+
+	const queue = await getQueue();
+	const failedEmails = await getFailedEmails();
+	const now = new Date().toISOString();
+	let queueItem = queue.find((item) => item.orderId === requestedOrderId || item.id === requestedOrderId);
+
+	if (!queueItem) {
+		const failedEmail = failedEmails.find((item) => item.orderId === requestedOrderId || item.queueId === requestedOrderId);
+		if (!failedEmail) {
+			throw new Error("لم يتم العثور على الطلب داخل Queue أو failed emails.");
+		}
+
+		queueItem = {
+			id: failedEmail.queueId || `QUEUE-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+			orderId: failedEmail.orderId,
+			status: "pending",
+			attempts: 0,
+			createdAt: failedEmail.failedAt || now,
+			updatedAt: now,
+			nextAttemptAt: now,
+			lastError: null,
+			order: failedEmail.order,
+			payload: failedEmail.payload,
+		};
+		queue.unshift(queueItem);
+	}
+
+	queueItem.status = "pending";
+	queueItem.attempts = 0;
+	queueItem.nextAttemptAt = now;
+	queueItem.updatedAt = now;
+	queueItem.lastError = null;
+
+	await saveQueue(queue);
+	await appendEmailLog({
+		type: "retry_one",
+		status: "pending",
+		orderId: queueItem.orderId,
+		queueId: queueItem.id,
+		message: "Admin requested retry for a saved order.",
+	});
+
+	return processEmailQueue({ force: true, limit: 1 });
+}
+
 export async function getEmailQueueStats() {
 	const [queue, logs, failedEmails] = await Promise.all([
 		getQueue(),
 		getEmailLogs(),
 		getFailedEmails(),
 	]);
-	const sentCount = queue.filter((item) => item.status === "sent").length;
+	const sentOrderIds = new Set([
+		...queue.filter((item) => item.status === "sent").map((item) => item.orderId),
+		...logs.filter((item) => item.status === "sent").map((item) => item.orderId),
+	].filter(Boolean));
+	const sentCount = sentOrderIds.size;
 	const pendingCount = queue.filter((item) => item.status === "pending" || item.status === "retrying").length;
 	const failedCount = queue.filter((item) => item.status === "failed").length || failedEmails.length;
 
