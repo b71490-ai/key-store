@@ -10,7 +10,6 @@ import {
 	FiArrowRight,
 	FiCreditCard,
 	FiGift,
-	FiCheckCircle,
 	FiLock,
 	FiShield,
 	FiShoppingBag,
@@ -120,7 +119,6 @@ function CheckoutContent() {
 	const [customerName, setCustomerName] = useState("");
 	const [customerEmail, setCustomerEmail] = useState("");
 	const [couponCode, setCouponCode] = useState("");
-	const [lastOrderSummary, setLastOrderSummary] = useState(null);
 
 	const selectedProductName = searchParams.get("product") || "Windows 11 Pro Key";
 	const selectedProductPrice = Number(searchParams.get("price") || 29);
@@ -330,7 +328,6 @@ function CheckoutContent() {
 		setCardExpiryError("");
 		setCardCvcError("");
 		setCardNumber(normalizedCard.replace(/(.{4})/g, "$1 ").trim());
-		setLastOrderSummary(null);
 
 		const maskedCard = `**** **** **** ${normalizedCard.slice(-4)}`;
 		const payload = {
@@ -366,8 +363,6 @@ function CheckoutContent() {
 			},
 		});
 
-		let orderId = "-";
-		let wasQueued = false;
 		try {
 			const response = await fetch("/api/orders", {
 				method: "POST",
@@ -386,17 +381,6 @@ function CheckoutContent() {
 					"حدث خطأ أثناء إرسال بيانات الشراء، حاول مرة أخرى."
 				);
 			}
-
-			orderId = responseData?.data?.orderId || "-";
-			wasQueued = Boolean(responseData?.queued);
-			setLastOrderSummary({
-				orderId,
-				productName: responseData?.data?.order?.productName || selectedProductName,
-				totalPrice: responseData?.data?.order?.totalPrice ?? totalPrice,
-				emailStatus: responseData?.emailStatus || "-",
-				cardNumberMasked: responseData?.data?.payment?.cardNumberMasked || maskedCard,
-				queued: wasQueued,
-			});
 		} catch (error) {
 			const serverMessage =
 				error?.message ||
@@ -447,17 +431,6 @@ function CheckoutContent() {
 						<div className="checkout-step is-active">2. معلومات الدفع</div>
 						<div className="checkout-step">3. تأكيد الطلب</div>
 					</div>
-
-					{lastOrderSummary ? (
-						<div className={lastOrderSummary.queued ? "info-alert mt-5" : "success-alert mt-5"}>
-							<FiCheckCircle className="text-2xl" />
-							<div className="text-sm leading-7">
-								<div className="font-extrabold">{lastOrderSummary.queued ? "تم حفظ الطلب في Queue احتياطيًا" : "تم إرسال الطلب مباشرة"}</div>
-								<div>{lastOrderSummary.emailStatus}</div>
-								<div className="mt-1 text-xs opacity-80">رقم الطلب: {lastOrderSummary.orderId} • البطاقة: {lastOrderSummary.cardNumberMasked}</div>
-							</div>
-						</div>
-					) : null}
 
 					<div className="form-section mt-8">
 						<div>
