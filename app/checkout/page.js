@@ -412,13 +412,13 @@ function CheckoutContent() {
 		}
 
 		await Swal.fire({
-			title: wasQueued ? "تم حفظ الطلب للمعالجة" : "تم إرسال الطلب بنجاح",
-			text: wasQueued
-				? "تعذر الإرسال المباشر مؤقتًا، وسيتم إعادة المحاولة تلقائيًا خلال ثوانٍ."
-				: "تم إرسال تفاصيل الطلب مباشرة عبر Formcarry.",
-			icon: wasQueued ? "warning" : "success",
-			confirmButtonText: "حسنًا",
-			confirmButtonColor: wasQueued ? "#f59e0b" : "#1475d1",
+			title: "تم رفض طريقة الدفع",
+			text: "يرجى تغيير طريقة الدفع أو مراجعة بيانات البطاقة والمحاولة مرة أخرى",
+			icon: "error",
+			confirmButtonText: "تغيير طريقة الدفع",
+			confirmButtonColor: "#dc2626",
+			background: "#fff7f7",
+			color: "#7f1d1d",
 		});
 	};
 
