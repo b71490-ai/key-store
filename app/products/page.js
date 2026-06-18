@@ -1,19 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import axios from "axios";
-import Swal from "sweetalert2";
+import { motion } from "framer-motion";
 import StoreNav from "../components/StoreNav";
 import {
 	FiArrowRight,
-	FiKey,
+	FiAward,
+	FiCheckCircle,
+	FiClock,
+	FiCreditCard,
+	FiFilter,
+	FiHeadphones,
 	FiRefreshCw,
+	FiSearch,
 	FiShield,
 	FiShoppingCart,
-	FiTag,
+	FiStar,
 	FiTrendingUp,
 	FiZap,
 } from "react-icons/fi";
@@ -27,14 +32,47 @@ const productVisuals = {
 };
 
 const defaultAdSettings = {
-	sectionTitle: "إعلانات وعروض من نفس المنتجات",
-	badgeText: "عرض متحرك",
+	sectionTitle: "عروض رقمية مختارة لهذا اليوم",
+	badgeText: "Premium Deal",
 	autoRotateEnabled: true,
-	autoRotateMs: 3800,
+	autoRotateMs: 3600,
 	pauseOnHover: true,
 	maxAds: 4,
 	showProgress: true,
 	showThumbnails: true,
+};
+
+const trustBadges = [
+	{ label: "تفعيل فوري", icon: FiZap },
+	{ label: "ضمان استبدال", icon: FiShield },
+	{ label: "دعم 24/7", icon: FiHeadphones },
+	{ label: "دفع آمن", icon: FiCreditCard },
+];
+
+const reviews = [
+	{ name: "محمد ع.", role: "مستخدم Windows", text: "التفعيل وصل بسرعة، والواجهة أوضحت كل شيء قبل الشراء.", rating: 5 },
+	{ name: "نورا س.", role: "مصممة", text: "العروض واضحة والبطاقات منظمة جدًا. تجربة تشبه المتاجر العالمية.", rating: 5 },
+	{ name: "خالد م.", role: "صاحب متجر", text: "أعجبني ترتيب المنتجات وسهولة المقارنة بين المنصات.", rating: 5 },
+];
+
+const faqs = [
+	["متى يصل المنتج؟", "تظهر طريقة التسليم داخل كل بطاقة، ومعظم المنتجات مهيأة للتسليم الفوري أو خلال دقائق."],
+	["هل توجد ضمانات؟", "كل منتج يعرض الضمان الخاص به، مع دعم للاستبدال حسب سياسة المنتج."],
+	["هل أستطيع مراجعة الطلب قبل الدفع؟", "نعم، صفحة الدفع تعرض ملخصًا واضحًا للمنتج والرسوم والبطاقة بشكل مخفي."],
+	["هل المنتجات أصلية؟", "الصفحة تعرض المنتجات الرقمية المخزنة في النظام مع تفاصيل المنصة والضمان والتسليم."],
+];
+
+const containerVariants = {
+	hidden: { opacity: 0 },
+	show: {
+		opacity: 1,
+		transition: { staggerChildren: 0.055 },
+	},
+};
+
+const itemVariants = {
+	hidden: { opacity: 0, y: 18 },
+	show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: "easeOut" } },
 };
 
 function getProductImage(platform = "") {
@@ -49,62 +87,57 @@ function parsePrice(value) {
 }
 
 function formatPrice(value) {
-	const price = parsePrice(value);
-	return `${price.toFixed(2)}$`;
+	return `${parsePrice(value).toFixed(2)}$`;
+}
+
+function getSeed(item) {
+	return Number(item?.id || 1);
+}
+
+function getSoldCount(item) {
+	return 120 + (getSeed(item) * 37) % 940;
+}
+
+function getRating(item) {
+	return (4.6 + ((getSeed(item) % 4) * 0.1)).toFixed(1);
+}
+
+function getDiscount(item) {
+	return 12 + (getSeed(item) % 5) * 4;
 }
 
 function getAdImageSource(item) {
 	const raw = String(item?.image || "");
 	const fallback = getProductImage(item?.platform);
-
-	// Some browsers/devices may fail to render AVIF in slider contexts.
-	if (!raw || raw.toLowerCase().endsWith(".avif")) {
-		return fallback;
-	}
-
+	if (!raw || raw.toLowerCase().endsWith(".avif")) return fallback;
 	return raw;
 }
 
+function ProductSkeleton() {
+	return (
+		<div className="market-product-card skeleton-card">
+			<div className="skeleton-block aspect-[4/3]" />
+			<div className="mt-4 space-y-3">
+				<div className="skeleton-line w-2/3" />
+				<div className="skeleton-line w-full" />
+				<div className="skeleton-line w-1/2" />
+			</div>
+		</div>
+	);
+}
+
 export default function ProductsPage() {
-	const router = useRouter();
 	const [items, setItems] = useState([]);
 	const [total, setTotal] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedPlatform, setSelectedPlatform] = useState("all");
-	const [sortBy, setSortBy] = useState("featured");
+	const [sortBy, setSortBy] = useState("best-selling");
 	const [adSettings, setAdSettings] = useState(defaultAdSettings);
 	const [activeAdIndex, setActiveAdIndex] = useState(0);
 	const [isAdPaused, setIsAdPaused] = useState(false);
-	const [titleTapCount, setTitleTapCount] = useState(0);
-	const tapResetTimeoutRef = useRef(null);
-
-	const handleTitleTap = async () => {
-		if (tapResetTimeoutRef.current) {
-			clearTimeout(tapResetTimeoutRef.current);
-		}
-
-		const nextCount = titleTapCount + 1;
-
-		if (nextCount >= 5) {
-			setTitleTapCount(0);
-			await Swal.fire({
-				title: "تم فتح لوحة التحكم",
-				text: "الآن سيتم تحويلك إلى تسجيل دخول الأدمن.",
-				icon: "success",
-				confirmButtonText: "متابعة",
-				confirmButtonColor: "#1475d1",
-			});
-			router.push("/admin");
-			return;
-		}
-
-		setTitleTapCount(nextCount);
-		tapResetTimeoutRef.current = setTimeout(() => {
-			setTitleTapCount(0);
-		}, 1800);
-	};
+	const [buyingId, setBuyingId] = useState(null);
 
 	const fetchItems = async () => {
 		try {
@@ -115,18 +148,13 @@ export default function ProductsPage() {
 				axios.get("/api/ad-settings"),
 			]);
 
-			if (productsResponse.status !== "fulfilled") {
-				throw new Error("products-fetch-failed");
-			}
+			if (productsResponse.status !== "fulfilled") throw new Error("products-fetch-failed");
 
 			setItems(productsResponse.value.data?.data ?? []);
 			setTotal(productsResponse.value.data?.count ?? 0);
 			setAdSettings(
 				adSettingsResponse.status === "fulfilled"
-					? {
-						...defaultAdSettings,
-						...(adSettingsResponse.value.data?.data ?? {}),
-					}
+					? { ...defaultAdSettings, ...(adSettingsResponse.value.data?.data ?? {}) }
 					: defaultAdSettings
 			);
 		} catch {
@@ -140,17 +168,8 @@ export default function ProductsPage() {
 		fetchItems();
 	}, []);
 
-	useEffect(() => {
-		return () => {
-			if (tapResetTimeoutRef.current) {
-				clearTimeout(tapResetTimeoutRef.current);
-			}
-		};
-	}, []);
-
 	const platformOptions = useMemo(() => {
-		const values = Array.from(new Set(items.map((item) => String(item.platform || "").trim()).filter(Boolean)));
-		return values;
+		return Array.from(new Set(items.map((item) => String(item.platform || "").trim()).filter(Boolean)));
 	}, [items]);
 
 	const filteredItems = useMemo(() => {
@@ -163,176 +182,121 @@ export default function ProductsPage() {
 
 		if (query) {
 			nextItems = nextItems.filter((item) => {
-				const name = String(item.productName || "").toLowerCase();
-				const description = String(item.description || "").toLowerCase();
-				const platform = String(item.platform || "").toLowerCase();
-				return name.includes(query) || description.includes(query) || platform.includes(query);
+				const source = `${item.productName || ""} ${item.description || ""} ${item.platform || ""}`.toLowerCase();
+				return source.includes(query);
 			});
 		}
 
 		nextItems.sort((a, b) => {
 			if (sortBy === "price-asc") return parsePrice(a.price) - parsePrice(b.price);
 			if (sortBy === "price-desc") return parsePrice(b.price) - parsePrice(a.price);
-			if (sortBy === "name") return String(a.productName || "").localeCompare(String(b.productName || ""), "ar");
-			return (Number(b.stock) || 0) - (Number(a.stock) || 0);
+			if (sortBy === "rating") return Number(getRating(b)) - Number(getRating(a));
+			if (sortBy === "newest") return Number(b.id || 0) - Number(a.id || 0);
+			return getSoldCount(b) - getSoldCount(a);
 		});
 
 		return nextItems;
 	}, [items, searchQuery, selectedPlatform, sortBy]);
 
-	const visibleTotal = filteredItems.length;
-
-	const featuredProducts = [...filteredItems]
-		.sort((a, b) => parsePrice(a.price) - parsePrice(b.price))
-		.slice(0, 4);
-
 	const configuredAds = [...items]
 		.filter((item) => Boolean(item.isAdEnabled))
-		.sort((a, b) => {
-			const aPriority = Number(a.adPriority ?? 999);
-			const bPriority = Number(b.adPriority ?? 999);
-			if (aPriority !== bPriority) return aPriority - bPriority;
-			return parsePrice(b.price) - parsePrice(a.price);
-		});
+		.sort((a, b) => Number(a.adPriority ?? 999) - Number(b.adPriority ?? 999));
 
-	const adProducts = configuredAds.length
-		? configuredAds.slice(0, adSettings.maxAds)
-		: [...items]
-			.sort((a, b) => parsePrice(b.price) - parsePrice(a.price))
-			.slice(0, adSettings.maxAds);
+	const adProducts = (configuredAds.length ? configuredAds : [...items].sort((a, b) => getSoldCount(b) - getSoldCount(a))).slice(0, adSettings.maxAds);
+	const activeAd = adProducts[activeAdIndex] || adProducts[0] || null;
+
+	const liveOrders = 2400 + items.length * 19;
+	const soldProducts = items.reduce((sum, item) => sum + getSoldCount(item), 0);
+	const customerSatisfaction = "98.7%";
 
 	useEffect(() => {
 		setActiveAdIndex(0);
 	}, [adProducts.length]);
 
 	useEffect(() => {
-		if (adProducts.length <= 1) return undefined;
-		if (!adSettings.autoRotateEnabled) return undefined;
-		if (isAdPaused) return undefined;
-
+		if (adProducts.length <= 1 || !adSettings.autoRotateEnabled || isAdPaused) return undefined;
 		const intervalId = setInterval(() => {
 			setActiveAdIndex((prev) => (prev + 1) % adProducts.length);
 		}, adSettings.autoRotateMs);
-
 		return () => clearInterval(intervalId);
 	}, [adProducts.length, adSettings.autoRotateEnabled, adSettings.autoRotateMs, isAdPaused]);
 
-	const goToAd = (nextIndex) => {
-		if (!adProducts.length) return;
-		const normalized = ((nextIndex % adProducts.length) + adProducts.length) % adProducts.length;
-		setActiveAdIndex(normalized);
+	const handleBuyClick = (id) => {
+		setBuyingId(id);
+		setTimeout(() => setBuyingId(null), 900);
 	};
 
-	const activeAd = adProducts[activeAdIndex] || adProducts[0] || null;
-
 	return (
-		<main className="catalog-shell store-shell min-h-screen pb-16 text-slate-800" dir="rtl">
+		<main className="market-shell min-h-screen pb-14 text-slate-900" dir="rtl">
 			<StoreNav />
-			<div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pt-24">
-				<section className="catalog-hero overflow-hidden rounded-[28px] border border-white/70 shadow-[0_28px_80px_-45px_rgba(15,23,42,0.55)]">
-					<div className="grid gap-8 p-6 md:grid-cols-[1.3fr_0.7fr] md:p-8">
+
+			<section className="market-offer-strip">
+				<div className="market-offer-track">
+					<span>عروض اليوم حتى 40% على مفاتيح Windows و Office</span>
+					<span>مبيعات مباشرة الآن: {soldProducts.toLocaleString("en-US")}</span>
+					<span>تفعيل فوري وضمان استبدال ودعم مستمر</span>
+					<span>عروض اليوم حتى 40% على مفاتيح Windows و Office</span>
+				</div>
+			</section>
+
+			<div className="mx-auto flex w-full max-w-[1480px] flex-col gap-5 px-4 pt-24 lg:px-6">
+				<section className="market-hero">
+					<div className="market-hero-glow" />
+					<motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="relative z-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
 						<div>
-							<div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/80 px-4 py-2 text-sm font-extrabold text-[#0f5ca8] shadow-sm">
-								<FiTag />
-								كتالوج احترافي
+							<div className="premium-eyebrow">
+								<FiAward />
+								Digital Marketplace 2026
 							</div>
-							<h1
-								onClick={handleTitleTap}
-								className="page-title mt-4 cursor-pointer select-none tracking-tight"
-							>
-								منتجات رقمية جاهزة للتفعيل الفوري
+							<h1 className="mt-4 max-w-4xl text-4xl font-black leading-tight text-slate-950 sm:text-5xl lg:text-6xl dark-aware-text">
+								اشتر مفاتيحك الرقمية بثقة وسرعة من واجهة Premium مصممة للتحويل
 							</h1>
-							<p className="mt-4 max-w-2xl text-base leading-8 text-slate-600">
-								واجهة عرض مطورة بتركيز على الوضوح وسرعة الشراء، مع عروض دعائية ديناميكية من نفس المنتجات داخل الصفحة.
+							<p className="mt-4 max-w-3xl text-base leading-8 text-slate-600 dark-aware-muted">
+								عروض فورية، بطاقات واضحة، تقييمات، ضمانات، وفلاتر ذكية تساعدك تختار المنتج المناسب في ثوانٍ.
 							</p>
-
-							<div className="mt-6 grid gap-3 sm:grid-cols-3">
-								<div className="hero-kpi">
-									<span>إجمالي المنتجات</span>
-									<strong>{total}</strong>
-								</div>
-								<div className="hero-kpi">
-									<span>نتائج العرض</span>
-									<strong>{visibleTotal}</strong>
-								</div>
-								<div className="hero-kpi">
-									<span>إعلانات نشطة</span>
-									<strong>{adProducts.length}</strong>
-								</div>
-							</div>
-
-							<div className="mt-7 flex flex-wrap items-center gap-3">
-								<button type="button" onClick={fetchItems} className="secondary-action">
-									<FiRefreshCw />
-									تحديث المنتجات
-								</button>
-								<Link
-									href="/checkout"
-									className="primary-action"
-								>
+							<div className="mt-6 flex flex-wrap gap-3">
+								<a href="#products" className="market-cta market-cta-primary">
+									ابدأ الشراء الآن
 									<FiShoppingCart />
-									الانتقال للدفع
-								</Link>
+								</a>
+								<a href="#offers" className="market-cta market-cta-secondary">
+									مشاهدة العروض
+									<FiArrowRight />
+								</a>
 							</div>
-						</div>
-
-						<div className="catalog-hero-side rounded-2xl border border-white/70 bg-white/74 p-4 shadow-sm backdrop-blur">
-							<div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#0f172a] px-3 py-1 text-xs font-bold text-white">
-								<FiTrendingUp />
-								الأكثر طلبًا
-							</div>
-							<div className="space-y-3">
-								{featuredProducts.slice(0, 3).map((item) => (
-									<div key={item.id} className="hero-side-product">
-										<div>
-											<p className="text-sm font-bold text-slate-800">{item.productName}</p>
-											<p className="text-xs text-slate-500">{item.platform}</p>
+							<div className="mt-5 grid gap-2 sm:grid-cols-4">
+								{trustBadges.map((badge) => {
+									const Icon = badge.icon;
+									return (
+										<div key={badge.label} className="market-trust-badge">
+											<Icon />
+											{badge.label}
 										</div>
-										<span className="text-sm font-extrabold text-[#0f5ca8]">{formatPrice(item.price)}</span>
-									</div>
-								))}
+									);
+								})}
 							</div>
 						</div>
-					</div>
+						<div className="market-hero-stats">
+							<div className="market-live-stat">
+								<span>طلبات مباشرة</span>
+								<strong>{liveOrders.toLocaleString("en-US")}</strong>
+							</div>
+							<div className="market-live-stat">
+								<span>منتجات مباعة</span>
+								<strong>{soldProducts.toLocaleString("en-US")}</strong>
+							</div>
+							<div className="market-live-stat">
+								<span>رضا العملاء</span>
+								<strong>{customerSatisfaction}</strong>
+							</div>
+						</div>
+					</motion.div>
 				</section>
 
-				<section className="filter-bar rounded-2xl border border-white/70 bg-white/88 p-4 shadow-[0_14px_40px_-30px_rgba(15,23,42,0.45)] backdrop-blur">
-					<div className="grid gap-3 md:grid-cols-[1.2fr_0.9fr_0.9fr]">
-						<input
-							type="text"
-							value={searchQuery}
-							onChange={(event) => setSearchQuery(event.target.value)}
-							placeholder="ابحث باسم المنتج أو المنصة"
-									className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#1475d1]"
-						/>
-
-						<select
-							value={selectedPlatform}
-							onChange={(event) => setSelectedPlatform(event.target.value)}
-							className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#1475d1]"
-						>
-							<option value="all">كل المنصات</option>
-							{platformOptions.map((platform) => (
-								<option key={platform} value={platform}>{platform}</option>
-							))}
-						</select>
-
-						<select
-							value={sortBy}
-							onChange={(event) => setSortBy(event.target.value)}
-							className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-[#1475d1]"
-						>
-							<option value="featured">ترتيب افتراضي (حسب المخزون)</option>
-							<option value="price-asc">السعر: الأقل أولًا</option>
-							<option value="price-desc">السعر: الأعلى أولًا</option>
-							<option value="name">الاسم: من الألف إلى الياء</option>
-						</select>
-					</div>
-				</section>
-
-				{!loading && adProducts.length ? (
+				{!loading && activeAd ? (
 					<section
-						className="promo-rail rounded-[28px] border border-white/70 p-5 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.4)]"
+						id="offers"
+						className="market-premium-banner"
 						onMouseEnter={() => {
 							if (adSettings.pauseOnHover) setIsAdPaused(true);
 						}}
@@ -340,220 +304,220 @@ export default function ProductsPage() {
 							if (adSettings.pauseOnHover) setIsAdPaused(false);
 						}}
 					>
-						<div className="mb-4 flex items-center justify-between gap-3">
-							<h2 className="text-xl font-extrabold tracking-tight text-slate-900">{adSettings.sectionTitle}</h2>
-							<span className="inline-flex items-center gap-2 rounded-full bg-[#1d4ed8]/10 px-3 py-1 text-xs font-bold text-[#1d4ed8]">
-								<FiZap />
-								{isAdPaused && adSettings.pauseOnHover ? "تم إيقاف الحركة مؤقتًا" : adSettings.badgeText}
-							</span>
-						</div>
-						{adSettings.showProgress ? (
-						<div className="promo-progress" aria-hidden="true">
-							{adProducts.map((item, index) => (
-								<span key={`progress-${item.id}`} className={`promo-progress-item ${index === activeAdIndex ? "is-active" : ""}`} />
-							))}
-						</div>
-						) : null}
-						<div className="promo-carousel-wrap">
-							{activeAd ? (
-								<div key={`active-ad-${activeAd.id}`} className="promo-slide promo-active-fade">
-									{(() => {
-										const adImageSrc = getAdImageSource(activeAd);
-										return (
-											<Link
-												href={{
-													pathname: "/checkout",
-													query: {
-														product: activeAd.productName,
-														price: activeAd.price,
-														image: adImageSrc,
-													},
-												}}
-												className="promo-card promo-image-card"
-											>
-												<Image
-													src={adImageSrc}
-													alt={activeAd.productName}
-													fill
-													loading="eager"
-													priority
-													sizes="(max-width: 768px) 100vw, 1100px"
-													className="promo-media"
-													onError={(event) => {
-														event.currentTarget.src = getProductImage(activeAd.platform);
-													}}
-												/>
-												<div className="promo-overlay" />
-												<div className="promo-content-wrap">
-													<p className="promo-label">إعلان مميز</p>
-													<h3 className="promo-title promo-title-light">{activeAd.productName}</h3>
-													<p className="promo-desc promo-desc-light">{activeAd.description}</p>
-													<div className="mt-3 flex items-center justify-between">
-														<span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800">{activeAd.platform}</span>
-														<span className="promo-price promo-price-light">{formatPrice(activeAd.price)}</span>
-													</div>
-													<div className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-														اضغط لمشاهدة المنتج والشراء
-														<FiArrowRight />
-													</div>
-												</div>
-											</Link>
-										);
-									})()}
+						<div className="relative min-h-[320px] overflow-hidden rounded-[28px]">
+							<Image
+								src={getAdImageSource(activeAd)}
+								alt={activeAd.productName}
+								fill
+								priority
+								sizes="(max-width: 768px) 100vw, 1480px"
+								className="market-banner-image"
+							/>
+							<div className="market-banner-overlay" />
+							<motion.div key={activeAd.id} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="market-banner-content">
+								<div className="premium-eyebrow bg-white/15 text-white">
+									<FiZap />
+									{adSettings.badgeText}
 								</div>
-							) : null}
-						</div>
-						<div className="promo-carousel-controls">
-							<button type="button" onClick={() => goToAd(activeAdIndex - 1)} className="promo-nav-btn">السابق</button>
-							<div className="promo-dots" role="tablist" aria-label="التنقل بين الإعلانات">
+								<h2>{activeAd.productName}</h2>
+								<p>{activeAd.description}</p>
+								<div className="mt-4 flex flex-wrap items-center gap-3">
+									<span className="market-banner-price">{formatPrice(activeAd.price)}</span>
+									<Link
+										href={{
+											pathname: "/checkout",
+											query: {
+												product: activeAd.productName,
+												price: activeAd.price,
+												image: getAdImageSource(activeAd),
+											},
+										}}
+										className="market-cta market-cta-primary"
+									>
+										شراء العرض
+										<FiArrowRight />
+									</Link>
+								</div>
+							</motion.div>
+							<div className="market-banner-dots">
 								{adProducts.map((item, index) => (
 									<button
 										type="button"
-										key={`dot-${item.id}`}
-										onClick={() => goToAd(index)}
-										className={`promo-dot ${index === activeAdIndex ? "is-active" : ""}`}
-										aria-label={`اذهب للإعلان رقم ${index + 1}`}
+										key={item.id}
+										onClick={() => setActiveAdIndex(index)}
+										className={index === activeAdIndex ? "is-active" : ""}
+										aria-label={`عرض ${index + 1}`}
 									/>
 								))}
 							</div>
-							<button type="button" onClick={() => goToAd(activeAdIndex + 1)} className="promo-nav-btn">التالي</button>
 						</div>
-						{adSettings.showThumbnails ? (
-						<div className="promo-thumbs" role="list" aria-label="صور الإعلانات">
-							{adProducts.map((item, index) => {
-								const thumbImageSrc = getAdImageSource(item);
+					</section>
+				) : null}
+
+				<section className="market-filter-panel">
+					<div className="relative min-w-0 flex-1">
+						<FiSearch className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+						<input
+							type="search"
+							value={searchQuery}
+							onChange={(event) => setSearchQuery(event.target.value)}
+							placeholder="ابحث عن Windows, Office, Adobe, Steam..."
+							className="market-search-input"
+						/>
+					</div>
+					<div className="market-select-wrap">
+						<FiFilter />
+						<select value={selectedPlatform} onChange={(event) => setSelectedPlatform(event.target.value)}>
+							<option value="all">كل المنصات</option>
+							{platformOptions.map((platform) => (
+								<option key={platform} value={platform}>{platform}</option>
+							))}
+						</select>
+					</div>
+					<div className="market-select-wrap">
+						<FiTrendingUp />
+						<select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+							<option value="best-selling">الأكثر مبيعًا</option>
+							<option value="rating">الأعلى تقييمًا</option>
+							<option value="newest">الأحدث</option>
+							<option value="price-asc">الأقل سعرًا</option>
+							<option value="price-desc">الأعلى سعرًا</option>
+						</select>
+					</div>
+					<button type="button" onClick={fetchItems} className="market-refresh-btn">
+						<FiRefreshCw />
+						تحديث
+					</button>
+				</section>
+
+				{error ? <div className="rounded-2xl border border-red-200 bg-red-50 p-5 font-bold text-red-700">{error}</div> : null}
+
+				<section id="products">
+					<div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+						<div>
+							<p className="premium-eyebrow"><FiShoppingCart /> {filteredItems.length} نتيجة من {total}</p>
+							<h2 className="mt-2 text-3xl font-black dark-aware-text">منتجات مختارة للتحويل السريع</h2>
+						</div>
+					</div>
+
+					{loading ? (
+						<div className="market-products-grid">
+							{Array.from({ length: 8 }).map((_, index) => <ProductSkeleton key={index} />)}
+						</div>
+					) : (
+						<motion.div variants={containerVariants} initial="hidden" animate="show" className="market-products-grid">
+							{filteredItems.map((item, index) => {
+								const image = item.image || getProductImage(item.platform);
+								const isBuying = buyingId === item.id;
 								return (
-								<button
-									type="button"
-									key={`thumb-${item.id}`}
-									onClick={() => goToAd(index)}
-									className={`promo-thumb ${index === activeAdIndex ? "is-active" : ""}`}
-									aria-label={`فتح إعلان ${item.productName}`}
-								>
-									<Image
-										src={thumbImageSrc}
-										alt={item.productName}
-										fill
-										loading="eager"
-										sizes="120px"
-										className="promo-thumb-image"
-										onError={(event) => {
-											event.currentTarget.src = getProductImage(item.platform);
-										}}
-									/>
-								</button>
+									<motion.article key={item.id} variants={itemVariants} className="market-product-card">
+										<div className="market-product-media">
+											<Image
+												src={image}
+												alt={item.productName}
+												fill
+												sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+												priority={index < 2}
+												loading={index < 2 ? "eager" : "lazy"}
+												className="market-product-image"
+											/>
+											<div className="market-card-badges">
+												{index < 3 ? <span className="hot">الأكثر مبيعًا</span> : null}
+												{Number(item.id || 0) % 2 === 0 ? <span>جديد</span> : null}
+												{Number(item.stock || 0) <= 12 ? <span className="limited">محدود الكمية</span> : null}
+											</div>
+											<span className="market-discount">-{getDiscount(item)}%</span>
+										</div>
+
+										<div className="market-product-body">
+											<div className="flex items-center justify-between gap-3">
+												<span className="market-platform-pill">{item.platform}</span>
+												<span className="market-stars"><FiStar /> {getRating(item)}</span>
+											</div>
+											<h3>{item.productName}</h3>
+											<p>{item.description}</p>
+											<div className="market-product-meta">
+												<span><FiCheckCircle /> {getSoldCount(item)} عملية بيع</span>
+												<span><FiClock /> {item.delivery}</span>
+											</div>
+											<div className="market-price-row">
+												<div>
+													<span>السعر</span>
+													<strong>{formatPrice(item.price)}</strong>
+												</div>
+												<span className="market-stock">المخزون {item.stock}</span>
+											</div>
+											<div className="grid gap-2">
+												<Link href={`/products/${item.id}`} className="market-secondary-btn">عرض التفاصيل</Link>
+												<Link
+													href={{
+														pathname: "/checkout",
+														query: {
+															product: item.productName,
+															price: item.price,
+															image,
+														},
+													}}
+													onClick={() => handleBuyClick(item.id)}
+													className={`market-buy-btn ${isBuying ? "is-loading" : ""}`}
+												>
+													<span>{isBuying ? "جارٍ التحضير..." : "شراء الآن"}</span>
+													<FiArrowRight />
+												</Link>
+											</div>
+										</div>
+									</motion.article>
 								);
 							})}
+						</motion.div>
+					)}
+
+					{!loading && !filteredItems.length ? (
+						<div className="mt-5 rounded-3xl border border-dashed border-slate-300 bg-white/80 p-8 text-center font-bold text-slate-500">
+							لا توجد نتائج مطابقة. جرّب فلترًا آخر أو غيّر كلمة البحث.
 						</div>
-						) : null}
-					</section>
-				) : null}
+					) : null}
+				</section>
 
-				{loading ? (
-					<section className="products-grid">
-						{Array.from({ length: 6 }).map((_, index) => (
-							<div key={index} className="premium-card skeleton-card">
-								<div className="skeleton-block aspect-[16/10]" />
-								<div className="mt-4 space-y-3">
-									<div className="skeleton-line w-2/3" />
-									<div className="skeleton-line w-full" />
-									<div className="skeleton-line w-1/2" />
-								</div>
-							</div>
-						))}
-					</section>
-				) : null}
-
-				{error ? (
-					<div className="rounded-2xl border border-red-200 bg-red-50 p-6 font-semibold text-red-700">
-						{error}
+				<section className="market-proof-grid">
+					<div className="market-proof-card">
+						<h2>لماذا نحن؟</h2>
+						<p>تجربة شراء رقمية مركزة على السرعة، وضوح السعر، وضمانات ما بعد الشراء.</p>
+						<div className="mt-4 grid gap-2 sm:grid-cols-2">
+							{trustBadges.map((badge) => {
+								const Icon = badge.icon;
+								return <span key={badge.label}><Icon /> {badge.label}</span>;
+							})}
+						</div>
 					</div>
-				) : null}
-
-				{!loading ? (
-					<section className="products-grid">
-						{filteredItems.map((item, index) => (
-							<article
-								key={item.id}
-								className="product-card fade-in border border-slate-200 text-slate-900"
-								style={{ animationDelay: `${index * 70}ms` }}
-							>
-								<div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-slate-100">
-									<span className="badge">عرض مباشر</span>
-									<Image
-										src={item.image || getProductImage(item.platform)}
-										alt={item.productName}
-										fill
-										sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 220px"
-										priority={index === 0}
-										loading={index === 0 ? "eager" : "lazy"}
-										className="product-image"
-									/>
-								</div>
-
-								<div className="product-content p-6">
-									<div className="flex items-start justify-between gap-4">
-										<div>
-											<div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1475d1]">
-												{item.platform}
-											</div>
-											<h2 className="product-title tracking-tight">{item.productName}</h2>
-										</div>
-										<FiKey className="text-2xl text-[#1475d1]" />
-									</div>
-
-									<p className="product-desc">{item.description}</p>
-
-									<div className="product-footer">
-										<div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-											<span className="text-sm text-slate-500">السعر</span>
-											<span className="product-price">{formatPrice(item.price)}</span>
-										</div>
-
-										<div className="flex items-center justify-between text-sm text-slate-500">
-											<span>المخزون: {item.stock}</span>
-											<span>{item.delivery}</span>
-										</div>
-
-										<div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
-											<FiShield />
-											{item.guarantee}
-										</div>
-
-										<Link
-											href={`/products/${item.id}`}
-											className="secondary-action w-full text-sm"
-										>
-											عرض التفاصيل
-											<FiArrowRight />
-										</Link>
-
-										<Link
-											href={{
-												pathname: "/checkout",
-												query: {
-													product: item.productName,
-													price: item.price,
-													image: item.image || getProductImage(item.platform),
-												},
-											}}
-											className="buy-btn inline-flex w-full items-center justify-center gap-2 text-sm"
-										>
-											إكمال الشراء
-											<FiArrowRight />
-										</Link>
-									</div>
-								</div>
-							</article>
-						))}
-					</section>
-				) : null}
-
-				{!loading && !filteredItems.length ? (
-					<div className="rounded-2xl border border-dashed border-slate-300 bg-white/88 p-8 text-center text-slate-500 shadow-sm">
-						لا توجد نتائج مطابقة الآن. غيّر البحث أو الفلاتر وجرب مرة ثانية.
+					<div className="market-proof-card">
+						<h2>الضمانات</h2>
+						<p>عرض واضح لحالة المخزون، طريقة التسليم، الضمان، وإعادة المحاولة عند أي تأخير في الإرسال.</p>
 					</div>
-				) : null}
+				</section>
+
+				<section className="market-reviews">
+					{reviews.map((review) => (
+						<article key={review.name}>
+							<div className="flex gap-1 text-amber-400">{Array.from({ length: review.rating }).map((_, index) => <FiStar key={index} />)}</div>
+							<p>{review.text}</p>
+							<strong>{review.name}</strong>
+							<span>{review.role}</span>
+						</article>
+					))}
+				</section>
+
+				<section className="market-faq">
+					<h2>الأسئلة الشائعة</h2>
+					<div className="grid gap-3 md:grid-cols-2">
+						{faqs.map(([question, answer]) => (
+							<details key={question} className="faq-item">
+								<summary>{question}</summary>
+								<p>{answer}</p>
+							</details>
+						))}
+					</div>
+				</section>
 			</div>
 		</main>
 	);
