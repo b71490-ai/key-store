@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import Swal from "sweetalert2";
 import StoreNav from "../components/StoreNav";
@@ -67,10 +68,11 @@ function formatDuration(value) {
 }
 
 export default function AdminPage() {
+  const router = useRouter();
   const productFormRef = useRef(null);
   const imageInputRef = useRef(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [username, setUsername] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -175,11 +177,6 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    setIsAuthenticated(window.sessionStorage.getItem("admin-auth") === "ok");
-  }, []);
-
-  useEffect(() => {
     if (!isAuthenticated) return;
     fetchProducts();
     fetchOrders();
@@ -229,19 +226,18 @@ export default function AdminPage() {
   const handleLogin = async (event) => {
     event.preventDefault();
 
-    if (!username.trim() || !password.trim()) {
-      setLoginError("يرجى إدخال اسم المستخدم وكلمة المرور.");
+    if (!email.trim() || !password.trim()) {
+      setLoginError("يرجى إدخال البريد الإلكتروني وكلمة المرور.");
       return;
     }
 
     try {
       setIsLoggingIn(true);
-      await axios.post("/api/admin-auth", {
-        username: username.trim(),
+      await axios.post("/api/admin/login", {
+        email: email.trim(),
         password,
       });
 
-      window.sessionStorage.setItem("admin-auth", "ok");
       setIsAuthenticated(true);
       setLoginError("");
 
@@ -259,11 +255,12 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogout = () => {
-    window.sessionStorage.removeItem("admin-auth");
+  const handleLogout = async () => {
+    await axios.post("/api/admin/logout").catch(() => {});
     setIsAuthenticated(false);
-    setUsername("");
+    setEmail("");
     setPassword("");
+    router.replace("/admin/login");
   };
 
   const handleRetryAllEmails = async () => {
@@ -634,14 +631,15 @@ export default function AdminPage() {
 
           <form onSubmit={handleLogin} className="mt-8 grid gap-4">
             <label className="text-sm font-semibold text-slate-700">
-              اسم المستخدم
+              البريد الإلكتروني
               <div className="relative mt-2">
                 <FiUser className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-11 outline-none transition focus:border-[#1475d1]"
-                  placeholder="admin"
+                  placeholder="admin@example.com"
                 />
               </div>
             </label>
