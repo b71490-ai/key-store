@@ -216,7 +216,7 @@ export default function ProductsPage() {
 			<div className="stable-products-container mx-auto w-full px-4 py-4 md:px-6">
 				<section className="stable-offer-bar">
 					<strong><FiZap /> عروض اليوم</strong>
-					<div className="stable-offer-track">
+					<div className="stable-offer-track grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
 						<span>خصومات حتى 40% على المنتجات الرقمية</span>
 						<span>مبيعات مباشرة: {soldProducts.toLocaleString("en-US")}</span>
 						<span>تفعيل فوري وضمان استبدال</span>
