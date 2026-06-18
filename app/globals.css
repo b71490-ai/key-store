@@ -704,6 +704,10 @@ body {
   color: #047857;
 }
 
+.checkout-shell .success-alert {
+  display: none !important;
+}
+
 .payment-decline-alert {
   display: flex;
   align-items: flex-start;
