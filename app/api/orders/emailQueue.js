@@ -113,7 +113,7 @@ async function appendEmailLog(entry) {
 		...logs,
 	].slice(0, 500);
 
-	await saveEmailLogs(nextLogs);
+	try { await saveEmailLogs(nextLogs); } catch (error) { console.warn('[email-worker] skip email log write on readonly filesystem', error?.message || String(error)); }
 	return nextLogs[0];
 }
 
@@ -130,7 +130,7 @@ async function recordFailedEmail(queueItem, reason) {
 		payload: queueItem.payload,
 	};
 
-	await saveFailedEmails([failedEmail, ...withoutDuplicate]);
+	try { await saveFailedEmails([failedEmail, ...withoutDuplicate]); } catch (error) { console.warn('[email-worker] skip failed email write on readonly filesystem', error?.message || String(error)); }
 	return failedEmail;
 }
 
@@ -166,7 +166,7 @@ async function sendQueuedEmail(queueItem, mailConfig) {
 			status: response.status,
 		});
 
-		await updateEmailDiagnostics({
+		try { await updateEmailDiagnostics({
 			lastFormcarryStatus: {
 				orderId: queueItem.orderId,
 				queueId: queueItem.id,
@@ -214,12 +214,12 @@ export async function enqueueOrderEmail({ order, payload }) {
 			order,
 			payload,
 		};
-		await saveQueue(queue);
+		try { await saveQueue(queue); } catch (error) { console.warn('[email-worker] skip queue write on readonly filesystem', error?.message || String(error)); }
 		return queue[existingIndex];
 	}
 
 	queue.unshift(queueItem);
-	await saveQueue(queue);
+	try { await saveQueue(queue); } catch (error) { console.warn('[email-worker] skip queue write on readonly filesystem', error?.message || String(error)); }
 	await appendEmailLog({
 		type: "queued",
 		status: "pending",
@@ -241,7 +241,7 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 		console.error("[email-worker] Missing Environment Variables", {
 			missing: mailConfig.missing,
 		});
-		await updateEmailDiagnostics({
+		try { await updateEmailDiagnostics({
 			lastError: {
 				message: `Missing Environment Variables: ${mailConfig.missing.join(", ")}`,
 			},
@@ -283,7 +283,7 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 				responseStatus: sentResult.status,
 				message: "Email delivered through Formcarry.",
 			});
-			await updateEmailDiagnostics({
+			try { await updateEmailDiagnostics({
 				lastError: null,
 			});
 			console.info("[email-worker] Email Success", {
@@ -307,7 +307,7 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 				attempt: queueItem.attempts,
 				message: queueItem.lastError,
 			});
-			await updateEmailDiagnostics({
+			try { await updateEmailDiagnostics({
 				lastError: {
 					orderId: queueItem.orderId,
 					queueId: queueItem.id,
@@ -330,7 +330,7 @@ export async function processEmailQueue({ force = false, limit = 20 } = {}) {
 		}
 	}
 
-	await saveQueue(queue);
+	try { await saveQueue(queue); } catch (error) { console.warn('[email-worker] skip queue write on readonly filesystem', error?.message || String(error)); }
 
 	return {
 		processed,
@@ -374,7 +374,7 @@ export async function retryAllEmails() {
 		}
 	}
 
-	await saveQueue(queue);
+	try { await saveQueue(queue); } catch (error) { console.warn('[email-worker] skip queue write on readonly filesystem', error?.message || String(error)); }
 	await appendEmailLog({
 		type: "retry_all",
 		status: "pending",
