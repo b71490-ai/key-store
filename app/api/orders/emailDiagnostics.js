@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const emailDiagnosticsFilePath = path.join(process.cwd(), "data", "email-debug.json");
+const emailDiagnosticsFilePath = path.join("/tmp", "key-store-data", "email-debug.json");
 
 const defaultEmailDiagnostics = {
 	lastError: null,

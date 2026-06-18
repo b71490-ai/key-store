@@ -7,7 +7,7 @@ import { enqueueOrderEmail } from "./emailQueue";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ordersStoreFilePath = path.join(process.cwd(), "data", "orders-store.json");
+const ordersStoreFilePath = path.join("/tmp", "key-store-data", "orders-store.json");
 let ordersStoreCache = null;
 
 async function saveOrdersStore(store) {
