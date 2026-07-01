@@ -116,6 +116,9 @@ function CheckoutContent() {
 	const [cardHolderError, setCardHolderError] = useState("");
 	const [cardExpiryError, setCardExpiryError] = useState("");
 	const [cardCvcError, setCardCvcError] = useState("");
+	const [customerNameError, setCustomerNameError] = useState("");
+	const [customerEmailError, setCustomerEmailError] = useState("");
+	const [submitAttempted, setSubmitAttempted] = useState(false);
 	const [customerName, setCustomerName] = useState("");
 	const [customerEmail, setCustomerEmail] = useState("");
 	const [couponCode, setCouponCode] = useState("");
@@ -123,7 +126,7 @@ function CheckoutContent() {
 	const selectedProductName = searchParams.get("product") || "Windows 11 Pro Key";
 	const selectedProductPrice = Number(searchParams.get("price") || 29);
 	const selectedProductImage =
-		searchParams.get("image") || "/images/real/dev-setup.jpg";
+		searchParams.get("image") || "/images/product-art/digital-product.svg";
 	const serviceFee = 2;
 	const totalPrice = selectedProductPrice + serviceFee;
 	const normalizedCardPreview = normalizeCardNumber(cardNumber);
@@ -161,7 +164,7 @@ function CheckoutContent() {
 		const normalized = normalizeCardNumber(value);
 
 		if (!normalized.length) {
-			setCardNumberError("");
+			setCardNumberError(submitAttempted ? "رقم البطاقة مطلوب." : "");
 			return;
 		}
 
@@ -182,7 +185,7 @@ function CheckoutContent() {
 		const trimmed = value.trim();
 
 		if (!trimmed.length) {
-			setCardHolderError("");
+			setCardHolderError(submitAttempted ? "اسم حامل البطاقة مطلوب." : "");
 			return;
 		}
 
@@ -196,7 +199,7 @@ function CheckoutContent() {
 
 	const validateCardExpiryLive = (value) => {
 		if (!value.length) {
-			setCardExpiryError("");
+			setCardExpiryError(submitAttempted ? "تاريخ الانتهاء مطلوب." : "");
 			return;
 		}
 
@@ -215,7 +218,7 @@ function CheckoutContent() {
 
 	const validateCardCvcLive = (cvcValue, cardValue = cardNumber) => {
 		if (!cvcValue.length) {
-			setCardCvcError("");
+			setCardCvcError(submitAttempted ? "رمز الأمان مطلوب." : "");
 			return;
 		}
 
@@ -240,34 +243,59 @@ function CheckoutContent() {
 		setCardCvcError("");
 	};
 
-	const isCheckoutDisabled =
-		!customerName.trim() ||
-		!customerEmail.trim() ||
-		!cardNumber ||
-		!cardHolder ||
-		!cardExpiry ||
-		!cardCvc ||
-		Boolean(cardNumberError) ||
-		Boolean(cardHolderError) ||
-		Boolean(cardExpiryError) ||
-		Boolean(cardCvcError);
+	const validateCheckoutFields = () => {
+		const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		const nextCustomerNameError = customerName.trim() ? "" : "الاسم الكامل مطلوب.";
+		const nextCustomerEmailError = !customerEmail.trim()
+			? "البريد الإلكتروني مطلوب."
+			: emailPattern.test(customerEmail.trim())
+				? ""
+				: "البريد الإلكتروني غير صالح.";
+		const nextCardNumberError = !cardNumber
+			? "رقم البطاقة مطلوب."
+			: isValidCardNumber(cardNumber)
+				? ""
+				: "رقم البطاقة غير صحيح.";
+		const nextCardHolderError = !cardHolder.trim()
+			? "اسم حامل البطاقة مطلوب."
+			: cardHolder.trim().length >= 3
+				? ""
+				: "اسم حامل البطاقة غير صالح.";
+		const nextCardExpiryError = !cardExpiry
+			? "تاريخ الانتهاء مطلوب."
+			: isValidExpiry(cardExpiry)
+				? ""
+				: "تاريخ الانتهاء غير صالح.";
+		const nextCardCvcError = !cardCvc
+			? "رمز الأمان مطلوب."
+			: isValidCvc(cardCvc, cardNumber)
+				? ""
+				: "رمز CVC غير صالح.";
+
+		setCustomerNameError(nextCustomerNameError);
+		setCustomerEmailError(nextCustomerEmailError);
+		setCardNumberError(nextCardNumberError);
+		setCardHolderError(nextCardHolderError);
+		setCardExpiryError(nextCardExpiryError);
+		setCardCvcError(nextCardCvcError);
+
+		return !(
+			nextCustomerNameError ||
+			nextCustomerEmailError ||
+			nextCardNumberError ||
+			nextCardHolderError ||
+			nextCardExpiryError ||
+			nextCardCvcError
+		);
+	};
 
 	const handleCheckout = async () => {
-		if (!customerName.trim() || !customerEmail.trim()) {
-			await Swal.fire({
-				title: "بيانات العميل غير مكتملة",
-				text: "يرجى إدخال الاسم والبريد الإلكتروني قبل تأكيد الشراء.",
-				icon: "warning",
-				confirmButtonText: "حسنًا",
-				confirmButtonColor: "#f59e0b",
-			});
-			return;
-		}
+		setSubmitAttempted(true);
 
-		if (!cardNumber || !cardHolder || !cardExpiry || !cardCvc) {
+		if (!validateCheckoutFields()) {
 			await Swal.fire({
-				title: "بيانات البطاقة غير مكتملة",
-				text: "يرجى تعبئة جميع حقول البطاقة قبل تأكيد الشراء.",
+				title: "راجع الحقول المحددة",
+				text: "تم تمييز الحقول الناقصة أو غير الصحيحة باللون الأحمر.",
 				icon: "warning",
 				confirmButtonText: "حسنًا",
 				confirmButtonColor: "#f59e0b",
@@ -441,19 +469,45 @@ function CheckoutContent() {
 						<label className="text-sm font-semibold text-slate-700">
 							الاسم الكامل
 							<input
-								className="field-input"
+								className={`field-input ${customerNameError ? "field-input-error" : ""}`}
+								aria-invalid={Boolean(customerNameError)}
 								value={customerName}
-								onChange={(event) => setCustomerName(event.target.value)}
+								onChange={(event) => {
+									const nextValue = event.target.value;
+									setCustomerName(nextValue);
+									if (submitAttempted) {
+										setCustomerNameError(nextValue.trim() ? "" : "الاسم الكامل مطلوب.");
+									}
+								}}
 							/>
+							{customerNameError ? (
+								<p className="field-error-message" role="alert">{customerNameError}</p>
+							) : null}
 						</label>
 						<label className="text-sm font-semibold text-slate-700">
 							البريد الإلكتروني
 							<input
 								type="email"
-								className="field-input"
+								className={`field-input ${customerEmailError ? "field-input-error" : ""}`}
+								aria-invalid={Boolean(customerEmailError)}
 								value={customerEmail}
-								onChange={(event) => setCustomerEmail(event.target.value)}
+								onChange={(event) => {
+									const nextValue = event.target.value;
+									setCustomerEmail(nextValue);
+									if (submitAttempted) {
+										if (!nextValue.trim()) {
+											setCustomerEmailError("البريد الإلكتروني مطلوب.");
+										} else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextValue.trim())) {
+											setCustomerEmailError("البريد الإلكتروني غير صالح.");
+										} else {
+											setCustomerEmailError("");
+										}
+									}
+								}}
 							/>
+							{customerEmailError ? (
+								<p className="field-error-message" role="alert">{customerEmailError}</p>
+							) : null}
 						</label>
 						<label className="text-sm font-semibold text-slate-700 md:col-span-2">
 							رمز القسيمة
@@ -482,11 +536,9 @@ function CheckoutContent() {
 							<label className="text-sm font-semibold text-slate-700 md:col-span-2">
 								رقم البطاقة
 								<input
-									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
-										cardNumberError
-											? "border-red-500 focus:border-red-500"
-											: "border-slate-200 focus:border-[#1475d1]"
-									}`}
+									className={`payment-field ${cardNumberError ? "is-invalid" : ""}`}
+									aria-invalid={Boolean(cardNumberError)}
+									inputMode="numeric"
 									placeholder="4111 1111 1111 1111"
 									value={cardNumber}
 									onChange={(event) => {
@@ -498,17 +550,14 @@ function CheckoutContent() {
 									}}
 								/>
 								{cardNumberError ? (
-									<p className="mt-2 text-xs font-semibold text-red-600">{cardNumberError}</p>
+									<p className="field-error-message" role="alert">{cardNumberError}</p>
 								) : null}
 							</label>
 							<label className="text-sm font-semibold text-slate-700">
 								اسم حامل البطاقة
 								<input
-									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
-										cardHolderError
-											? "border-red-500 focus:border-red-500"
-											: "border-slate-200 focus:border-[#1475d1]"
-									}`}
+									className={`payment-field ${cardHolderError ? "is-invalid" : ""}`}
+									aria-invalid={Boolean(cardHolderError)}
 									placeholder="الاسم الكامل"
 									value={cardHolder}
 									onChange={(event) => {
@@ -517,17 +566,15 @@ function CheckoutContent() {
 									}}
 								/>
 								{cardHolderError ? (
-									<p className="mt-2 text-xs font-semibold text-red-600">{cardHolderError}</p>
+									<p className="field-error-message" role="alert">{cardHolderError}</p>
 								) : null}
 							</label>
 							<label className="text-sm font-semibold text-slate-700">
 								تاريخ الانتهاء
 								<input
-									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
-										cardExpiryError
-											? "border-red-500 focus:border-red-500"
-											: "border-slate-200 focus:border-[#1475d1]"
-									}`}
+									className={`payment-field ${cardExpiryError ? "is-invalid" : ""}`}
+									aria-invalid={Boolean(cardExpiryError)}
+									inputMode="numeric"
 									placeholder="MM/YY"
 									value={cardExpiry}
 									onChange={(event) => {
@@ -540,7 +587,7 @@ function CheckoutContent() {
 									}}
 								/>
 								{cardExpiryError ? (
-									<p className="mt-2 text-xs font-semibold text-red-600">{cardExpiryError}</p>
+									<p className="field-error-message" role="alert">{cardExpiryError}</p>
 								) : null}
 								</label>
 							<label className="text-sm font-semibold text-slate-700 md:col-span-2">
@@ -548,11 +595,8 @@ function CheckoutContent() {
 								<input
 									type="password"
 									inputMode="numeric"
-									className={`mt-2 w-full rounded-2xl border bg-slate-50 px-4 py-3 outline-none transition ${
-										cardCvcError
-											? "border-red-500 focus:border-red-500"
-											: "border-slate-200 focus:border-[#1475d1]"
-									}`}
+									className={`payment-field ${cardCvcError ? "is-invalid" : ""}`}
+									aria-invalid={Boolean(cardCvcError)}
 									placeholder="123"
 									value={cardCvc}
 									onChange={(event) => {
@@ -562,7 +606,7 @@ function CheckoutContent() {
 									}}
 								/>
 								{cardCvcError ? (
-									<p className="mt-2 text-xs font-semibold text-red-600">{cardCvcError}</p>
+									<p className="field-error-message" role="alert">{cardCvcError}</p>
 								) : null}
 							</label>
 						</div>
@@ -633,13 +677,9 @@ function CheckoutContent() {
 
 					<button
 						type="button"
+						data-testid="checkout-confirm"
 						onClick={handleCheckout}
-						disabled={isCheckoutDisabled}
-						className={`mt-8 w-full rounded-full px-5 py-3 font-extrabold transition ${
-							isCheckoutDisabled
-								? "cursor-not-allowed bg-slate-200 text-slate-500"
-								: "bg-white text-[#0f3b78] hover:bg-blue-100"
-						}`}
+						className="mt-8 w-full rounded-full bg-white px-5 py-3 font-extrabold text-[#0f3b78] transition hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-white/30"
 					>
 						تأكيد الشراء
 					</button>

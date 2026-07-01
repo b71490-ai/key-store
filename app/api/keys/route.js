@@ -3,89 +3,89 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const MAX_ALLOWED_PRICE = 15;
+const MAX_ALLOWED_PRICE = 10;
 
 const canonicalPriceByProductName = {
-	"Windows 11 Pro Key": 14.99,
-	"Office 2021 Professional": 13.5,
-	"Adobe Creative Cloud 1 Year": 12.99,
-	"Windows 10 Pro Key": 10.75,
-	"Windows 11 Home Key": 9.99,
-	"Office 365 Family 1 Year": 11.49,
-	"Office 2021 Home & Student": 10.25,
-	"Microsoft Visio Professional": 12.5,
-	"Adobe Photoshop 1 Year": 11.99,
-	"Adobe Premiere Pro 1 Year": 12.25,
-	"Adobe Illustrator 1 Year": 11.75,
-	"Steam Wallet 50 USD": 14.5,
-	"Steam Wallet 20 USD": 8.99,
-	"Xbox Game Pass Ultimate 3 Months": 9.5,
-	"Windows Server 2022 Standard": 14.25,
-	"Project Professional 2021": 13.25,
-	"Canva Pro 1 Year": 7.99,
-	"EA Play 12 Months": 8.5,
+	"Windows 11 Pro Key": 9.99,
+	"Office 2021 Professional": 9.75,
+	"Adobe Creative Cloud 1 Year": 9.95,
+	"Windows 10 Pro Key": 8.99,
+	"Windows 11 Home Key": 7.99,
+	"Office 365 Family 1 Year": 9.5,
+	"Office 2021 Home & Student": 7.75,
+	"Microsoft Visio Professional": 8.5,
+	"Adobe Photoshop 1 Year": 8.99,
+	"Adobe Premiere Pro 1 Year": 9.25,
+	"Adobe Illustrator 1 Year": 8.75,
+	"Steam Wallet 50 USD": 9.99,
+	"Steam Wallet 20 USD": 6.99,
+	"Xbox Game Pass Ultimate 3 Months": 8.99,
+	"Windows Server 2022 Standard": 9.85,
+	"Project Professional 2021": 8.75,
+	"Canva Pro 1 Year": 5.99,
+	"EA Play 12 Months": 6.49,
+	"Windows 11 Pro Workstation Key": 9.45,
+	"Office 2019 Professional Plus": 7.99,
+	"Microsoft 365 Personal 6 Months": 6.99,
+	"Windows 10 Home Key": 7.49,
+	"Adobe Lightroom 1 Year": 8.25,
+	"Adobe After Effects Starter": 9.35,
+	"Steam Wallet 10 USD": 4.99,
+	"Xbox Game Pass PC 1 Month": 5.99,
+	"Canva Pro 3 Months": 4.99,
+	"Norton Security 1 Year": 8.99,
+	"ESET Internet Security 1 Year": 9.25,
+	"Bitdefender Total Security 1 Year": 9.75,
+	"Grammarly Premium 3 Months": 6.49,
+	"Notion Plus 6 Months": 6.99,
 };
 
 const fallbackPricePalette = [
+	4.99,
+	5.49,
+	5.99,
+	6.49,
 	6.99,
 	7.5,
-	8.25,
+	7.99,
 	8.99,
 	9.49,
 	9.99,
-	10.5,
-	10.99,
-	11.49,
-	11.99,
-	12.5,
-	12.99,
-	13.5,
-	13.99,
-	14.25,
-	14.5,
-	14.75,
-	14.99,
 ];
 
 const productImageByPlatform = {
 	Windows: [
-		"/images/real/laptop.jpg",
-		"/images/real/dev-setup.jpg",
+		"/images/product-art/windows-11-pro-key.svg",
+		"/images/product-art/windows-10-pro-key.svg",
+		"/images/product-art/windows-11-home-key.svg",
+		"/images/product-art/windows-server-2022-standard.svg",
 	],
 	Microsoft: [
-		"/images/product-office.jpg",
-		"/images/real/code-screen.jpg",
+		"/images/product-art/office-2021-professional.svg",
+		"/images/product-art/office-365-family-1-year.svg",
+		"/images/product-art/xbox-game-pass-ultimate-3-months.svg",
+		"/images/product-art/project-professional-2021.svg",
 	],
 	Adobe: [
-		"/images/real/chip.jpg",
-		"/images/real/dev-setup.jpg",
+		"/images/product-art/adobe-creative-cloud-1-year.svg",
+		"/images/product-art/adobe-photoshop-1-year.svg",
+		"/images/product-art/adobe-premiere-pro-1-year.svg",
+		"/images/product-art/adobe-illustrator-1-year.svg",
+		"/images/product-art/canva-pro-1-year.svg",
 	],
 	Steam: [
-		"/images/real/code-screen.jpg",
-		"/images/real/laptop.jpg",
+		"/images/product-art/steam-wallet-20-usd.svg",
+		"/images/product-art/steam-wallet-50-usd.svg",
+		"/images/product-art/ea-play-12-months.svg",
 	],
-	General: ["/images/real/dev-setup.jpg"],
-};
-
-const productImageByName = {
-	"Windows 11 Pro Key": "/uploads/products/1776453299953-cfa36b44-803b-4005-9b52-8e6eb6153263.avif",
-	"Office 2021 Professional": "/uploads/products/1776453511014-23b8bcc7-d621-456c-94fb-864288b5c4c6.jpg",
-	"Adobe Creative Cloud 1 Year": "/uploads/products/1776453632023-f8fe9758-7a76-4263-8c3c-8a8d317d6278.jpg",
-	"Windows 10 Pro Key": "/uploads/products/1776453771646-eb8dc436-5e39-4565-a8bf-a145c7730525.jpg",
-	"Windows 11 Home Key": "/uploads/products/1776453951187-179d2ece-32d9-4004-8c3d-8f9ceb085b37.jpg",
-	"Office 365 Family 1 Year": "/uploads/products/1776454118715-f6d54cd0-a345-47b2-8459-57fe1558e254.jpg",
-	"Office 2021 Home & Student": "/uploads/products/1776454390486-88d6d493-d163-4806-a55c-1ef8ac5ce15e.jpg",
-	"Microsoft Visio Professional": "/uploads/products/1776454541323-e7754877-59e5-428d-8ac0-4dfdb0ad8023.webp",
-	"Adobe Photoshop 1 Year": "/uploads/products/1776454711247-9634ac00-f6de-4181-8789-dd000da3d2c6.webp",
-	"Adobe Premiere Pro 1 Year": "/uploads/products/1776454810122-241bfdb0-0192-4586-8852-8344fafad0bc.webp",
-	"Adobe Illustrator 1 Year": "/uploads/products/1776454950695-4be8ac27-5196-485a-8bcc-3ab427802135.jpg",
-	"Steam Wallet 50 USD": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg",
-	"Steam Wallet 20 USD": "/uploads/products/1776455189240-c2feb073-3358-4b58-b7b0-70f224375bb9.jpg",
-	"Xbox Game Pass Ultimate 3 Months": "/uploads/products/1776455375739-f8bdb87e-6d10-4c60-a065-d58d19c6793e.jpg",
-	"Windows Server 2022 Standard": "/uploads/products/1776455494276-62406757-b171-419b-9c8b-ee6b70c194c3.png",
-	"Project Professional 2021": "/uploads/products/1776455641506-86686594-344f-4fd5-bd88-5fb2aec395e6.webp",
-	"Canva Pro 1 Year": "/uploads/products/1776455890029-1b1390b8-a01b-4cca-b483-3854f4118762.webp",
-	"EA Play 12 Months": "/uploads/products/1776455780808-f600a4ca-5c81-4254-a33c-96cea5ce65ef.avif",
+	General: [
+		"/images/product-art/digital-product.svg",
+		"/images/product-art/norton-security-1-year.svg",
+		"/images/product-art/eset-internet-security-1-year.svg",
+		"/images/product-art/bitdefender-total-security-1-year.svg",
+		"/images/product-art/grammarly-premium-3-months.svg",
+		"/images/product-art/notion-plus-6-months.svg",
+	],
 };
 
 function resolveProductImage(platform, seed) {
@@ -95,17 +95,19 @@ function resolveProductImage(platform, seed) {
 	return collection[Math.abs(seed) % collection.length];
 }
 
+function productArtSlug(value) {
+	return String(value || "")
+		.toLowerCase()
+		.replace(/&/g, "and")
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+}
+
 function resolveImageByProductName(productName) {
 	if (!productName) return undefined;
 
-	const exact = productImageByName[productName];
-	if (exact) return exact;
-
-	const foundEntry = Object.entries(productImageByName).find(([name]) =>
-		name.toLowerCase() === String(productName).toLowerCase()
-	);
-
-	return foundEntry?.[1];
+	const slug = productArtSlug(productName);
+	return slug ? `/images/product-art/${slug}.svg` : undefined;
 }
 
 function isExistingPublicAsset(filePath = "") {
@@ -115,8 +117,19 @@ function isExistingPublicAsset(filePath = "") {
 }
 
 function resolveSafeImage({ productName, platform, seed, preferredImage }) {
-	if (preferredImage && isExistingPublicAsset(preferredImage)) {
-		return preferredImage;
+
+	// If a preferred image is explicitly provided (uploaded or inline), prefer it.
+	if (preferredImage) {
+		try {
+			const asStr = String(preferredImage);
+			if (asStr.startsWith("data:")) return asStr; // inline data URI
+		} catch {
+			// ignore and continue
+		}
+
+		if (isExistingPublicAsset(preferredImage)) {
+			return preferredImage;
+		}
 	}
 
 	const byName = resolveImageByProductName(productName);
@@ -129,14 +142,17 @@ function resolveSafeImage({ productName, platform, seed, preferredImage }) {
 		return byPlatform;
 	}
 
-	return "/images/real/dev-setup.jpg";
+	return "/images/product-art/digital-product.svg";
 }
 
 function getCanonicalPrice(productName, seed = 0) {
 	const exact = canonicalPriceByProductName[productName];
-	if (typeof exact === "number") return exact;
+	if (typeof exact === "number") return Math.min(exact, MAX_ALLOWED_PRICE);
 
-	return fallbackPricePalette[Math.abs(seed) % fallbackPricePalette.length];
+	return Math.min(
+		fallbackPricePalette[Math.abs(seed) % fallbackPricePalette.length],
+		MAX_ALLOWED_PRICE
+	);
 }
 
 function normalizeProductPrice(item, indexSeed = 0) {
@@ -362,6 +378,7 @@ const defaultKeysStore = [
 		platform: item.platform,
 		seed: item.id,
 	}),
+	updatedAt: Date.now(),
 }));
 
 const keysStoreFilePath = path.join(process.cwd(), "data", "keys-store.json");
@@ -379,12 +396,13 @@ async function getKeysStore() {
 		const raw = await readFile(keysStoreFilePath, "utf8");
 		const parsed = JSON.parse(raw);
 		if (Array.isArray(parsed)) {
-			keysStoreCache = parsed.map((item, index) => ({
-				...item,
-				price: normalizeProductPrice(item, index),
-				isAdEnabled: normalizeIsAdEnabled(item.isAdEnabled, index),
-				adPriority: normalizeAdPriority(item.adPriority, index),
-			}));
+				keysStoreCache = parsed.map((item, index) => ({
+					...item,
+					price: normalizeProductPrice(item, index),
+					isAdEnabled: normalizeIsAdEnabled(item.isAdEnabled, index),
+					adPriority: normalizeAdPriority(item.adPriority, index),
+					updatedAt: item.updatedAt ?? Date.now(),
+				}));
 
 			try {
 				await saveKeysStore(keysStoreCache);
@@ -454,6 +472,7 @@ export async function POST(request) {
 			seed: Date.now(),
 			preferredImage: body.image,
 		}),
+		updatedAt: Date.now(),
 	};
 
 	keysStore.unshift(newProduct);
@@ -548,6 +567,7 @@ export async function PUT(request) {
 			seed: current.id,
 			preferredImage: body?.image ?? current.image,
 		}),
+		updatedAt: Date.now(),
 	};
 
 	keysStore[productIndex] = updatedProduct;

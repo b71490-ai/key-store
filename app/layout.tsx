@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Cairo, Geist, Geist_Mono } from "next/font/google";
+import fs from "node:fs";
+import path from "node:path";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,7 +21,29 @@ const cairo = Cairo({
   display: "swap",
 });
 
-export const metadata: Metadata = {
+const publicDirectory = path.join(process.cwd(), "public");
+const iconCandidates = [
+  "store-icon.svg",
+  "store-icon.png",
+  "store-icon.jpg",
+  "store-icon.jpeg",
+  "store-icon.webp",
+  "store-icon.ico",
+];
+
+async function getBrandingIconUrl() {
+  for (const fileName of iconCandidates) {
+    const filePath = path.join(publicDirectory, fileName);
+    if (fs.existsSync(filePath)) {
+      const stat = await fs.promises.stat(filePath);
+      const version = Math.floor(stat.mtimeMs);
+      return `/api/site-branding-icon?v=${version}`;
+    }
+  }
+  return "/api/site-branding-icon";
+}
+
+const baseMetadata: Metadata = {
   metadataBase: new URL("https://key-store-gamma.vercel.app"),
   title: {
     default: "Key Store | متجر مفاتيح رقمية Premium",
@@ -34,11 +58,6 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-  },
-  icons: {
-    icon: "/icon.jpg",
-    apple: "/apple-icon.jpg",
-    shortcut: "/icon.jpg",
   },
   openGraph: {
     title: "Key Store | متجر مفاتيح رقمية Premium",
@@ -66,6 +85,18 @@ export const metadata: Metadata = {
     google: "XfTG-kolUfUSKO545Mxb3J9aefitXBsV_mc316ua9OU",
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const iconUrl = await getBrandingIconUrl();
+  return {
+    ...baseMetadata,
+    icons: {
+      icon: iconUrl,
+      apple: iconUrl,
+      shortcut: iconUrl,
+    },
+  };
+}
 
 export default function RootLayout({
   children,

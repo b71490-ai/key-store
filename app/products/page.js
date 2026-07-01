@@ -22,11 +22,12 @@ import {
 } from "react-icons/fi";
 
 const productVisuals = {
-	windows: "/images/real/laptop.jpg",
-	microsoft: "/images/real/code-screen.jpg",
-	adobe: "/images/real/chip.jpg",
-	steam: "/images/real/dev-setup.jpg",
-	default: "/images/real/dev-setup.jpg",
+	windows: "/images/product-art/windows-11-pro-key.svg",
+	microsoft: "/images/product-art/office-2021-professional.svg",
+	adobe: "/images/product-art/adobe-creative-cloud-1-year.svg",
+	steam: "/images/product-art/steam-wallet-20-usd.svg",
+	general: "/images/product-art/digital-product.svg",
+	default: "/images/product-art/digital-product.svg",
 };
 
 const defaultAdSettings = {
@@ -94,8 +95,7 @@ function getDiscount(item) {
 function getAdImageSource(item) {
 	const raw = String(item?.image || "");
 	const fallback = getProductImage(item?.platform);
-	if (!raw || raw.toLowerCase().endsWith(".avif")) return fallback;
-	return raw;
+	return raw || fallback;
 }
 
 function ProductSkeleton() {

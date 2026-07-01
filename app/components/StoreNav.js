@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FiGrid, FiMoon, FiShoppingBag, FiSun } from "react-icons/fi";
+import { FiGrid, FiMoon, FiSun } from "react-icons/fi";
 
 export default function StoreNav() {
 	const router = useRouter();
 	const [theme, setTheme] = useState("light");
+	const [logoVersion, setLogoVersion] = useState(0);
 	const hiddenTapCountRef = useRef(0);
 	const hiddenTapTimerRef = useRef(null);
 
@@ -17,6 +18,11 @@ export default function StoreNav() {
 		const nextTheme = savedTheme || preferredTheme;
 		document.documentElement.dataset.theme = nextTheme;
 		queueMicrotask(() => setTheme(nextTheme));
+
+		const handleBrandingUpdate = () => setLogoVersion(Date.now());
+		window.addEventListener("brandingUpdated", handleBrandingUpdate);
+		setLogoVersion(Date.now());
+		return () => window.removeEventListener("brandingUpdated", handleBrandingUpdate);
 	}, []);
 
 	const toggleTheme = () => {
@@ -25,6 +31,10 @@ export default function StoreNav() {
 		window.localStorage.setItem("store-theme", nextTheme);
 		document.documentElement.dataset.theme = nextTheme;
 	};
+
+	useEffect(() => {
+		setLogoVersion(Date.now());
+	}, []);
 
 	const handleHiddenAdminTap = () => {
 		hiddenTapCountRef.current += 1;
@@ -59,15 +69,14 @@ export default function StoreNav() {
 			/>
 			<nav className="mx-auto flex h-16 w-full max-w-[1200px] items-center justify-between gap-3 px-4">
 				<Link href="/" className="flex items-center gap-3">
-					<span className="brand-mark">
-						<FiShoppingBag />
+					<span className="brand-mark block h-10 w-10 overflow-hidden rounded-2xl bg-slate-950">
+						<img src={`/api/site-branding-icon?v=${logoVersion}`} alt="My Store" width={40} height={40} className="h-full w-full object-contain" />
 					</span>
-					<span className="font-bold text-slate-950 dark-aware-text">Key Store</span>
+					<span className="font-bold text-slate-950 dark-aware-text">My Store</span>
 				</Link>
 
 				<div className="hidden items-center gap-2 rounded-full border border-slate-200/80 bg-white/70 p-1 text-sm font-semibold text-slate-600 shadow-sm backdrop-blur md:flex">
-					<Link className="nav-pill" href="/">الرئيسية</Link>
-					<Link className="nav-pill" href="/products">المنتجات</Link>
+					<Link className="nav-pill" href="/products">المتجر</Link>
 					<Link className="nav-pill" href="/checkout">الدفع</Link>
 				</div>
 

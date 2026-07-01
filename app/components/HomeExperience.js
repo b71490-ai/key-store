@@ -143,7 +143,7 @@ export default function HomeExperience() {
 					<div className="floating-card hero-product-card">
 						<div className="relative aspect-[16/10] overflow-hidden rounded-2xl">
 							<Image
-								src={heroProduct?.image || "/images/real/laptop.jpg"}
+								src={heroProduct?.image || "/images/product-art/digital-product.svg"}
 								alt={heroProduct?.productName || "متجر مفاتيح رقمي Premium"}
 								fill
 								priority
@@ -201,7 +201,7 @@ export default function HomeExperience() {
 						<Link href={`/products/${productSlug(item)}`} key={item.id} className="premium-card premium-product-card">
 							<div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-slate-100">
 								<Image
-									src={item.image || "/images/real/dev-setup.jpg"}
+									src={item.image || "/images/product-art/digital-product.svg"}
 									alt={item.productName}
 									fill
 									sizes="(max-width: 768px) 90vw, (max-width: 1200px) 45vw, 300px"

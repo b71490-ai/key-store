@@ -88,7 +88,7 @@ export default function ProductDetailsPage() {
 		);
 	}
 
-	const image = product.image || "/images/real/dev-setup.jpg";
+	const image = product.image || "/images/product-art/digital-product.svg";
 
 	return (
 		<main className="premium-shell min-h-screen px-4 pb-16 pt-24 text-slate-900" dir="rtl">
@@ -171,7 +171,7 @@ export default function ProductDetailsPage() {
 							<Link href={`/products/${item.id}`} key={item.id} className="premium-card premium-product-card">
 								<div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-slate-100">
 									<Image
-										src={item.image || "/images/real/dev-setup.jpg"}
+										src={item.image || "/images/product-art/digital-product.svg"}
 										alt={item.productName}
 										fill
 										loading="lazy"

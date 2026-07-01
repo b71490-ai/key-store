@@ -36,6 +36,7 @@ const initialForm = {
   guarantee: "ضمان استبدال لمدة 7 أيام",
   description: "",
   image: "",
+  updatedAt: undefined,
 };
 
 const initialAdSettings = {
@@ -48,6 +49,8 @@ const initialAdSettings = {
   showProgress: true,
   showThumbnails: true,
 };
+
+const MAX_PRODUCT_PRICE = 10;
 
 function formatDate(value) {
   if (!value) return "-";
@@ -97,17 +100,42 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProductId, setEditingProductId] = useState(null);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [siteBrandingFile, setSiteBrandingFile] = useState(null);
+  const [siteBrandingPreviewSrc, setSiteBrandingPreviewSrc] = useState("/api/site-branding-icon");
+  const [siteBrandingVersion, setSiteBrandingVersion] = useState(0);
+  const [isUploadingSiteBranding, setIsUploadingSiteBranding] = useState(false);
   const [adminPasswordForm, setAdminPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
   const [isSavingAdminPassword, setIsSavingAdminPassword] = useState(false);
+  const siteBrandingInputRef = useRef(null);
+  const siteBrandingObjectUrlRef = useRef(null);
 
   const imagePreviewSrc = useMemo(() => {
     const candidate = String(form.image || "").trim();
-    return candidate || "/images/real/dev-setup.jpg";
+    if (!candidate) return "/images/product-art/digital-product.svg";
+    try {
+      if (candidate.startsWith("data:")) return candidate;
+      const suffix = form.updatedAt ? `?v=${form.updatedAt}` : "";
+      return `${candidate}${suffix}`;
+    } catch {
+      return candidate;
+    }
   }, [form.image]);
+
+  const resolveItemImage = (item) => {
+    const src = item?.image || "/images/product-art/digital-product.svg";
+    try {
+      const asStr = String(src);
+      if (asStr.startsWith("data:")) return asStr;
+      const suffix = item?.updatedAt ? `?v=${item.updatedAt}` : "";
+      return `${asStr}${suffix}`;
+    } catch {
+      return "/images/product-art/digital-product.svg";
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -175,6 +203,20 @@ export default function AdminPage() {
       setAdSettings(initialAdSettings);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (siteBrandingObjectUrlRef.current) {
+        URL.revokeObjectURL(siteBrandingObjectUrlRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (siteBrandingVersion) {
+      setSiteBrandingPreviewSrc(`/api/site-branding-icon?v=${siteBrandingVersion}`);
+    }
+  }, [siteBrandingVersion]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -358,6 +400,97 @@ export default function AdminPage() {
     }
   };
 
+  const handleSiteBrandingSelection = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      await Swal.fire({
+        title: "ملف غير صالح",
+        text: "يرجى اختيار صورة صحيحة لشعار المتجر.",
+        icon: "warning",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#f59e0b",
+      });
+      event.target.value = "";
+      return;
+    }
+
+    if (siteBrandingObjectUrlRef.current) {
+      URL.revokeObjectURL(siteBrandingObjectUrlRef.current);
+      siteBrandingObjectUrlRef.current = null;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    siteBrandingObjectUrlRef.current = previewUrl;
+    setSiteBrandingPreviewSrc(previewUrl);
+    setSiteBrandingFile(file);
+  };
+
+  const clearSiteBrandingSelection = () => {
+    if (siteBrandingObjectUrlRef.current) {
+      URL.revokeObjectURL(siteBrandingObjectUrlRef.current);
+      siteBrandingObjectUrlRef.current = null;
+    }
+    setSiteBrandingFile(null);
+    setSiteBrandingPreviewSrc(`/api/site-branding-icon?v=${siteBrandingVersion}`);
+    if (siteBrandingInputRef.current) {
+      siteBrandingInputRef.current.value = "";
+    }
+  };
+
+  const handleUploadSiteBranding = async (event) => {
+    event.preventDefault();
+
+    if (!siteBrandingFile) {
+      await Swal.fire({
+        title: "لا يوجد ملف",
+        text: "يرجى اختيار صورة الشعار أولاً.",
+        icon: "warning",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#f59e0b",
+      });
+      return;
+    }
+
+    try {
+      setIsUploadingSiteBranding(true);
+      const formData = new FormData();
+      formData.append("file", siteBrandingFile);
+
+      await axios.post("/api/site-branding", formData);
+      const nextVersion = Date.now();
+
+      setSiteBrandingVersion(nextVersion);
+      setSiteBrandingPreviewSrc(`/api/site-branding-icon?v=${nextVersion}`);
+      setSiteBrandingFile(null);
+      if (siteBrandingInputRef.current) {
+        siteBrandingInputRef.current.value = "";
+      }
+
+      window.dispatchEvent(new Event("brandingUpdated"));
+
+      await Swal.fire({
+        title: "تم رفع الشعار",
+        text: "تم حفظ شعار المتجر الجديد بنجاح.",
+        icon: "success",
+        confirmButtonText: "ممتاز",
+        confirmButtonColor: "#2563eb",
+      });
+    } catch (error) {
+      const message = error?.response?.data?.message || "تعذّر رفع الشعار الآن.";
+      await Swal.fire({
+        title: "فشل الرفع",
+        text: message,
+        icon: "error",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#dc2626",
+      });
+    } finally {
+      setIsUploadingSiteBranding(false);
+    }
+  };
+
   const startEditingProduct = (item) => {
     setEditingProductId(item.id);
     setForm({
@@ -371,6 +504,7 @@ export default function AdminPage() {
       guarantee: item.guarantee ?? "ضمان استبدال لمدة 7 أيام",
       description: item.description ?? "",
       image: item.image ?? "",
+      updatedAt: item.updatedAt,
     });
     setSelectedImageFile(null);
 
@@ -390,6 +524,19 @@ export default function AdminPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const numericPrice = Number(form.price);
+
+    if (Number.isNaN(numericPrice) || numericPrice <= 0 || numericPrice > MAX_PRODUCT_PRICE) {
+      await Swal.fire({
+        title: "السعر غير صالح",
+        text: `السعر يجب أن يكون بين 1 و ${MAX_PRODUCT_PRICE} دولار.`,
+        icon: "warning",
+        confirmButtonText: "حسنًا",
+        confirmButtonColor: "#f59e0b",
+      });
+      return;
+    }
+
     try {
       setIsSaving(true);
       let imagePath = form.image || undefined;
@@ -405,7 +552,7 @@ export default function AdminPage() {
       const payload = {
         productName: form.productName,
         platform: form.platform,
-        price: Number(form.price),
+        price: numericPrice,
         stock: Number(form.stock || 0),
         isAdEnabled: Boolean(form.isAdEnabled),
         adPriority: Number(form.adPriority || 1),
@@ -700,7 +847,7 @@ export default function AdminPage() {
             <div className="mt-8 grid gap-4 md:grid-cols-2">
               <input name="productName" value={form.productName} onChange={handleChange} required className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="اسم المنتج" />
               <select name="platform" value={form.platform} onChange={handleChange} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]"><option>Windows</option><option>Microsoft</option><option>Steam</option><option>Adobe</option><option>General</option></select>
-              <input name="price" value={form.price} onChange={handleChange} required type="number" min="1" max="15" step="0.01" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="السعر (حتى 15$)" />
+              <input name="price" value={form.price} onChange={handleChange} required type="number" min="1" max={MAX_PRODUCT_PRICE} step="0.01" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder={`السعر (حتى ${MAX_PRODUCT_PRICE}$)`} />
               <input name="stock" value={form.stock} onChange={handleChange} type="number" min="0" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="المخزون" />
               <input name="delivery" value={form.delivery} onChange={handleChange} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="التسليم" />
               <input name="guarantee" value={form.guarantee} onChange={handleChange} className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-[#1475d1]" placeholder="الضمان" />
@@ -743,11 +890,40 @@ export default function AdminPage() {
                 </button>
               ) : null}
             </div>
-	          </form>
-	        </section>
+          </form>
+        </section>
 
-	        <section className="soft-panel p-7 md:p-8">
-	          <div className="flex flex-wrap items-center justify-between gap-3">
+        <section className="soft-panel p-7 md:p-8">
+          <div className="flex items-center gap-3"><div className="rounded-xl bg-blue-50 p-3"><FiImage className="text-2xl text-[#1475d1]" /></div><h2 className="text-2xl font-extrabold tracking-tight">تحديث شعار المتجر</h2></div>
+          <p className="mt-3 text-sm leading-7 text-slate-500">اضغط لرفع شعار جديد سيُستخدم في الشريط العلوي والفافيكون.</p>
+          <form onSubmit={handleUploadSiteBranding} className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 text-sm font-bold text-slate-700">معاينة الشعار</div>
+              <div className="flex items-center justify-center rounded-2xl border border-slate-300 bg-white p-6">
+                <img src={siteBrandingPreviewSrc} alt="معاينة شعار المتجر" className="h-20 w-20 rounded-2xl object-contain" />
+              </div>
+            </div>
+            <div className="grid gap-3">
+              <p className="text-sm text-slate-500">اختر ملف شعار جديد بصيغة PNG أو SVG أو JPG أو WEBP، ثم اضغط رفع.</p>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#1475d1] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#0f5ca8]">
+                <FiImage /> اختيار شعار
+                <input ref={siteBrandingInputRef} type="file" accept="image/*" onChange={handleSiteBrandingSelection} className="hidden" />
+              </label>
+              {siteBrandingFile ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                  ملف مختار: <span className="font-semibold">{siteBrandingFile.name}</span>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="submit" disabled={isUploadingSiteBranding} className="inline-flex items-center justify-center rounded-full bg-[#1475d1] px-6 py-3 font-bold text-white transition hover:bg-[#0f5ca8] disabled:cursor-not-allowed disabled:opacity-70">{isUploadingSiteBranding ? "جارٍ الرفع..." : "رفع الشعار"}</button>
+                <button type="button" onClick={clearSiteBrandingSelection} className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 transition hover:bg-slate-50">إلغاء</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <section className="soft-panel p-7 md:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
 	            <div className="flex items-center gap-3">
 	              <div className="rounded-xl bg-blue-50 p-3"><FiMail className="text-2xl text-[#1475d1]" /></div>
 	              <div>
@@ -868,7 +1044,42 @@ export default function AdminPage() {
           <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-extrabold tracking-tight">إدارة المنتجات</h2><div className="relative w-full sm:w-72"><FiSearch className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-10 text-sm outline-none focus:border-[#1475d1]" placeholder="بحث" /></div></div>
           {isLoadingProducts ? <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">جاري تحميل المنتجات...</div> : null}
           {!isLoadingProducts && filteredProducts.length ? (
-            <div className="mt-5 overflow-x-auto"><table className="min-w-full text-right text-sm"><thead><tr className="border-b border-slate-200 text-slate-500"><th className="px-3 py-3">الصورة</th><th className="px-3 py-3">المنتج</th><th className="px-3 py-3">المنصة</th><th className="px-3 py-3">السعر</th><th className="px-3 py-3">المخزون</th><th className="px-3 py-3">إجراء</th></tr></thead><tbody>{filteredProducts.map((item) => (<tr key={item.id} className="border-b border-slate-100"><td className="px-3 py-3"><div className="h-12 w-20 rounded-lg border border-slate-200 bg-cover bg-center" style={{ backgroundImage: `url(${item.image || "/images/real/dev-setup.jpg"})` }} /></td><td className="px-3 py-3 font-semibold text-slate-800">{item.productName}</td><td className="px-3 py-3 text-slate-600">{item.platform}</td><td className="px-3 py-3 text-slate-600">${item.price}</td><td className="px-3 py-3 text-slate-600">{item.stock}</td><td className="px-3 py-3"><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => startEditingProduct(item)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-50"><FiEdit2 /> تعديل</button><button type="button" onClick={() => handleDeleteProduct(item.id, item.productName)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50"><FiTrash2 /> حذف</button></div></td></tr>))}</tbody></table></div>
+            <div className="mt-5 overflow-x-auto">
+              <table className="min-w-full text-right text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500">
+                    <th className="px-3 py-3">الصورة</th>
+                    <th className="px-3 py-3">المنتج</th>
+                    <th className="px-3 py-3">المنصة</th>
+                    <th className="px-3 py-3">السعر</th>
+                    <th className="px-3 py-3">المخزون</th>
+                    <th className="px-3 py-3">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredProducts.map((item) => (
+                    <tr key={item.id} className="border-b border-slate-100">
+                      <td className="px-3 py-3">
+                        <div
+                          className="h-12 w-20 rounded-lg border border-slate-200 bg-cover bg-center"
+                          style={{ backgroundImage: `url(${resolveItemImage(item)})` }}
+                        />
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-slate-800">{item.productName}</td>
+                      <td className="px-3 py-3 text-slate-600">{item.platform}</td>
+                      <td className="px-3 py-3 text-slate-600">${item.price}</td>
+                      <td className="px-3 py-3 text-slate-600">{item.stock}</td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button type="button" onClick={() => startEditingProduct(item)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-50"><FiEdit2 /> تعديل</button>
+                          <button type="button" onClick={() => handleDeleteProduct(item.id, item.productName)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50"><FiTrash2 /> حذف</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : null}
         </section>
 
